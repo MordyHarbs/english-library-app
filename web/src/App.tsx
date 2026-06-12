@@ -4,6 +4,10 @@ import Login from '@/pages/Login'
 import Catalog from '@/pages/Catalog'
 import BookDetail from '@/pages/BookDetail'
 import Reserve from '@/pages/Reserve'
+import MyBooks from '@/pages/account/MyBooks'
+import MyRequests from '@/pages/account/MyRequests'
+import MyHistory from '@/pages/account/MyHistory'
+import MyDetails from '@/pages/account/MyDetails'
 
 /**
  * Route skeleton — mirrors TECH-PLAN D4.
@@ -28,10 +32,10 @@ export default function App() {
       <Route path="/login" element={<Login />} />
 
       {/* Member portal */}
-      <Route path="/account/books" element={<RequireAuth><Placeholder title="My books" /></RequireAuth>} />
-      <Route path="/account/requests" element={<RequireAuth><Placeholder title="My requests" /></RequireAuth>} />
-      <Route path="/account/history" element={<RequireAuth><Placeholder title="My history" /></RequireAuth>} />
-      <Route path="/account/details" element={<RequireAuth><Placeholder title="My details" /></RequireAuth>} />
+      <Route path="/account/books" element={<RequireAuth><MyBooks /></RequireAuth>} />
+      <Route path="/account/requests" element={<RequireAuth><MyRequests /></RequireAuth>} />
+      <Route path="/account/history" element={<RequireAuth><MyHistory /></RequireAuth>} />
+      <Route path="/account/details" element={<RequireAuth><MyDetails /></RequireAuth>} />
 
       {/* Admin */}
       <Route path="/admin" element={<RequireAdmin><Placeholder title="Admin overview" /></RequireAdmin>} />
