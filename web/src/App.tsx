@@ -1,6 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
 import { RequireAuth, RequireAdmin } from '@/components/guards'
 import Login from '@/pages/Login'
+import Catalog from '@/pages/Catalog'
+import BookDetail from '@/pages/BookDetail'
+import Reserve from '@/pages/Reserve'
 
 /**
  * Route skeleton — mirrors TECH-PLAN D4.
@@ -19,9 +22,9 @@ export default function App() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<Placeholder title="Catalog" />} />
-      <Route path="/books/:id" element={<Placeholder title="Book detail" />} />
-      <Route path="/reserve" element={<Placeholder title="Reserve" />} />
+      <Route path="/" element={<Catalog />} />
+      <Route path="/books/:id" element={<BookDetail />} />
+      <Route path="/reserve" element={<Reserve />} />
       <Route path="/login" element={<Login />} />
 
       {/* Member portal */}
