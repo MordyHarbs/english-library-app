@@ -1,27 +1,30 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { RequireAuth, RequireAdmin } from '@/components/guards'
-import Login from '@/pages/Login'
+// Public pages load eagerly (the landing experience).
 import Catalog from '@/pages/Catalog'
 import BookDetail from '@/pages/BookDetail'
 import Reserve from '@/pages/Reserve'
-import MyBooks from '@/pages/account/MyBooks'
-import MyRequests from '@/pages/account/MyRequests'
-import MyHistory from '@/pages/account/MyHistory'
-import MyDetails from '@/pages/account/MyDetails'
-import AdminOverview from '@/pages/admin/Overview'
-import AdminReservations from '@/pages/admin/Reservations'
-import AdminReservationDetail from '@/pages/admin/ReservationDetail'
-import AdminWorkbench from '@/pages/admin/Workbench'
-import AdminBooks from '@/pages/admin/Books'
-import AdminMembers from '@/pages/admin/Members'
-import AdminLoans from '@/pages/admin/Loans'
-import AdminHistory from '@/pages/admin/History'
-import AdminSettings from '@/pages/admin/Settings'
-import AdminCatalogPrint from '@/pages/admin/CatalogPrint'
+import Login from '@/pages/Login'
+
+// Account + admin are code-split out of the initial bundle.
+const MyBooks = lazy(() => import('@/pages/account/MyBooks'))
+const MyRequests = lazy(() => import('@/pages/account/MyRequests'))
+const MyHistory = lazy(() => import('@/pages/account/MyHistory'))
+const MyDetails = lazy(() => import('@/pages/account/MyDetails'))
+const AdminOverview = lazy(() => import('@/pages/admin/Overview'))
+const AdminReservations = lazy(() => import('@/pages/admin/Reservations'))
+const AdminReservationDetail = lazy(() => import('@/pages/admin/ReservationDetail'))
+const AdminWorkbench = lazy(() => import('@/pages/admin/Workbench'))
+const AdminBooks = lazy(() => import('@/pages/admin/Books'))
+const AdminMembers = lazy(() => import('@/pages/admin/Members'))
+const AdminLoans = lazy(() => import('@/pages/admin/Loans'))
+const AdminHistory = lazy(() => import('@/pages/admin/History'))
+const AdminSettings = lazy(() => import('@/pages/admin/Settings'))
+const AdminCatalogPrint = lazy(() => import('@/pages/admin/CatalogPrint'))
 
 /**
  * Route skeleton — mirrors TECH-PLAN D4.
- * Pages are placeholders for now; each phase fills them in.
  */
 function Placeholder({ title }: { title: string }) {
   return (
@@ -34,6 +37,13 @@ function Placeholder({ title }: { title: string }) {
 
 export default function App() {
   return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
     <Routes>
       {/* Public */}
       <Route path="/" element={<Catalog />} />
@@ -61,5 +71,6 @@ export default function App() {
 
       <Route path="*" element={<Placeholder title="Not found" />} />
     </Routes>
+    </Suspense>
   )
 }
