@@ -8,6 +8,9 @@ import MyBooks from '@/pages/account/MyBooks'
 import MyRequests from '@/pages/account/MyRequests'
 import MyHistory from '@/pages/account/MyHistory'
 import MyDetails from '@/pages/account/MyDetails'
+import AdminOverview from '@/pages/admin/Overview'
+import AdminReservations from '@/pages/admin/Reservations'
+import AdminReservationDetail from '@/pages/admin/ReservationDetail'
 
 /**
  * Route skeleton — mirrors TECH-PLAN D4.
@@ -38,9 +41,9 @@ export default function App() {
       <Route path="/account/details" element={<RequireAuth><MyDetails /></RequireAuth>} />
 
       {/* Admin */}
-      <Route path="/admin" element={<RequireAdmin><Placeholder title="Admin overview" /></RequireAdmin>} />
-      <Route path="/admin/reservations" element={<RequireAdmin><Placeholder title="Reservations queue" /></RequireAdmin>} />
-      <Route path="/admin/reservations/:id" element={<RequireAdmin><Placeholder title="Reservation detail" /></RequireAdmin>} />
+      <Route path="/admin" element={<RequireAdmin><AdminOverview /></RequireAdmin>} />
+      <Route path="/admin/reservations" element={<RequireAdmin><AdminReservations /></RequireAdmin>} />
+      <Route path="/admin/reservations/:id" element={<RequireAdmin><AdminReservationDetail /></RequireAdmin>} />
       <Route path="/admin/workbench" element={<RequireAdmin><Placeholder title="Lend / Return workbench" /></RequireAdmin>} />
       <Route path="/admin/books" element={<RequireAdmin><Placeholder title="Manage books" /></RequireAdmin>} />
       <Route path="/admin/members" element={<RequireAdmin><Placeholder title="Manage members" /></RequireAdmin>} />
