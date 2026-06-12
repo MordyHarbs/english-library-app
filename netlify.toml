@@ -1,0 +1,23 @@
+# Static-only deploy. No [functions] block on purpose — all backend logic lives in
+# Supabase Edge Functions, so Netlify only ever serves static files (no function billing).
+
+[build]
+  base = "web"
+  publish = "web/dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA fallback — let React Router handle client-side routes.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"

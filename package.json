@@ -1,0 +1,23 @@
+{
+  "name": "english-library-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "web",
+    "migration"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace web",
+    "build": "npm run build --workspace web",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:status": "supabase status",
+    "functions:serve": "supabase functions serve --env-file supabase/functions/.env",
+    "import": "npm run import --workspace migration"
+  },
+  "devDependencies": {
+    "supabase": "^2.106.0"
+  }
+}

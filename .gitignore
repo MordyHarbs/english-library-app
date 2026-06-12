@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+web/dist/
+dist/
+
+# Env / secrets — never commit
+.env
+.env.local
+.env.*.local
+supabase/functions/.env
+migration/.env
+
+# Migration data — contains member personal data, keep out of git
+migration/export/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Editor / OS
+.DS_Store
+*.log
+.vscode/
+.idea/
