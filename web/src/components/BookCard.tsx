@@ -44,7 +44,7 @@ export function BookCard({
         <div className="flex-1">
           <button
             onClick={() => navigate(`/books/${book.id}`)}
-            className="line-clamp-2 text-left text-sm font-semibold leading-snug hover:underline"
+            className="font-display line-clamp-2 text-left text-[0.95rem] font-medium leading-snug hover:underline"
           >
             {book.title}
           </button>
@@ -69,8 +69,8 @@ export function BookCard({
           className={cn(
             'mt-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors',
             inCart
-              ? 'bg-secondary text-secondary-foreground'
-              : 'bg-primary text-primary-foreground hover:opacity-90',
+              ? 'bg-primary text-primary-foreground'
+              : 'border border-input bg-transparent text-foreground hover:bg-secondary',
           )}
         >
           {inCart ? (

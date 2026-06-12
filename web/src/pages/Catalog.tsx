@@ -41,10 +41,14 @@ export default function Catalog() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Browse the catalog</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add the books you'd like, then send a request — no account needed.
+      <div className="mb-8 border-b pb-6">
+        <p className="eyebrow">The collection</p>
+        <h1 className="mt-2 text-4xl font-medium tracking-tight sm:text-5xl">
+          Browse the catalog
+        </h1>
+        <p className="mt-3 max-w-xl text-muted-foreground">
+          Add the books you'd like, then send a request. No account needed — logging
+          in just lets you follow along.
         </p>
       </div>
 

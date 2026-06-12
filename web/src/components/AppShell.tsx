@@ -13,9 +13,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold">
-            <Library className="size-5 text-accent" />
-            <span className="text-lg tracking-tight">Ayalot Library</span>
+          <Link to="/" className="flex items-baseline gap-2">
+            <Library className="size-5 translate-y-0.5 text-accent" />
+            <span className="font-display text-xl font-medium tracking-tight">
+              Ayalot Library
+            </span>
           </Link>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
