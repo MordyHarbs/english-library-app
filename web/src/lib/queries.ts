@@ -13,6 +13,7 @@ export interface CatalogBook {
   cover_path: string | null
   category_id: string | null
   categoryName: string | null
+  comments: string | null
   date_added: string
 }
 
@@ -43,7 +44,7 @@ export function useBooks() {
       const { data, error } = await supabase
         .from('books')
         .select(
-          'id, title, author, description, pages, cover_path, category_id, date_added, categories(name)',
+          'id, title, author, description, pages, cover_path, category_id, comments, date_added, categories(name)',
         )
         .order('title', { ascending: true })
       if (error) throw error
@@ -56,6 +57,7 @@ export function useBooks() {
         cover_path: b.cover_path,
         category_id: b.category_id,
         categoryName: (b.categories as { name: string } | null)?.name ?? null,
+        comments: b.comments,
         date_added: b.date_added,
       }))
     },
@@ -70,7 +72,7 @@ export function useBook(id: string | undefined) {
       const { data, error } = await supabase
         .from('books')
         .select(
-          'id, title, author, description, pages, cover_path, category_id, date_added, categories(name)',
+          'id, title, author, description, pages, cover_path, category_id, comments, date_added, categories(name)',
         )
         .eq('id', id!)
         .maybeSingle()
@@ -85,6 +87,7 @@ export function useBook(id: string | undefined) {
         cover_path: data.cover_path,
         category_id: data.category_id,
         categoryName: (data.categories as { name: string } | null)?.name ?? null,
+        comments: data.comments,
         date_added: data.date_added,
       }
     },

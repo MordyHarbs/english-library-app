@@ -11,6 +11,13 @@ import MyDetails from '@/pages/account/MyDetails'
 import AdminOverview from '@/pages/admin/Overview'
 import AdminReservations from '@/pages/admin/Reservations'
 import AdminReservationDetail from '@/pages/admin/ReservationDetail'
+import AdminWorkbench from '@/pages/admin/Workbench'
+import AdminBooks from '@/pages/admin/Books'
+import AdminMembers from '@/pages/admin/Members'
+import AdminLoans from '@/pages/admin/Loans'
+import AdminHistory from '@/pages/admin/History'
+import AdminSettings from '@/pages/admin/Settings'
+import AdminCatalogPrint from '@/pages/admin/CatalogPrint'
 
 /**
  * Route skeleton — mirrors TECH-PLAN D4.
@@ -44,13 +51,13 @@ export default function App() {
       <Route path="/admin" element={<RequireAdmin><AdminOverview /></RequireAdmin>} />
       <Route path="/admin/reservations" element={<RequireAdmin><AdminReservations /></RequireAdmin>} />
       <Route path="/admin/reservations/:id" element={<RequireAdmin><AdminReservationDetail /></RequireAdmin>} />
-      <Route path="/admin/workbench" element={<RequireAdmin><Placeholder title="Lend / Return workbench" /></RequireAdmin>} />
-      <Route path="/admin/books" element={<RequireAdmin><Placeholder title="Manage books" /></RequireAdmin>} />
-      <Route path="/admin/members" element={<RequireAdmin><Placeholder title="Manage members" /></RequireAdmin>} />
-      <Route path="/admin/loans" element={<RequireAdmin><Placeholder title="Open loans" /></RequireAdmin>} />
-      <Route path="/admin/history" element={<RequireAdmin><Placeholder title="Lending history" /></RequireAdmin>} />
-      <Route path="/admin/settings" element={<RequireAdmin><Placeholder title="Settings" /></RequireAdmin>} />
-      <Route path="/admin/catalog-print" element={<RequireAdmin><Placeholder title="Catalog (print)" /></RequireAdmin>} />
+      <Route path="/admin/workbench" element={<RequireAdmin><AdminWorkbench /></RequireAdmin>} />
+      <Route path="/admin/books" element={<RequireAdmin><AdminBooks /></RequireAdmin>} />
+      <Route path="/admin/members" element={<RequireAdmin><AdminMembers /></RequireAdmin>} />
+      <Route path="/admin/loans" element={<RequireAdmin><AdminLoans /></RequireAdmin>} />
+      <Route path="/admin/history" element={<RequireAdmin><AdminHistory /></RequireAdmin>} />
+      <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />
+      <Route path="/admin/catalog-print" element={<RequireAdmin><AdminCatalogPrint /></RequireAdmin>} />
 
       <Route path="*" element={<Placeholder title="Not found" />} />
     </Routes>
