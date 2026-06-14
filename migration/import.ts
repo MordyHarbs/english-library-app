@@ -213,6 +213,27 @@ async function main() {
   }
   console.log(`Members: ${memberCount}${ADMIN_EMAILS.length ? ` (admins: ${ADMIN_EMAILS.join(', ')})` : ''}`)
 
+  // ---- Guarantee admin accounts exist (so the librarian can always log in) --
+  for (const adminEmail of ADMIN_EMAILS) {
+    const { data: existing } = await db
+      .from('members')
+      .select('id')
+      .eq('email', adminEmail)
+      .maybeSingle()
+    if (existing) {
+      await db.from('members').update({ is_admin: true }).eq('id', existing.id)
+    } else {
+      const { error } = await db.from('members').insert({
+        name: adminEmail.split('@')[0],
+        email: adminEmail,
+        paid: true,
+        is_admin: true,
+      })
+      if (error) note(`Could not create admin "${adminEmail}": ${error.message}`)
+      else console.log(`  + created admin account: ${adminEmail}`)
+    }
+  }
+
   // ---- Loans (open from Books out, closed from Lending History) -----------
   const loanDuration =
     (await db.from('settings').select('value').eq('key', 'loan_duration_days').single())
