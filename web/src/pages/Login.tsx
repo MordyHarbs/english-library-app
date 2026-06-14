@@ -76,7 +76,7 @@ export default function Login() {
 
   async function verifyCode() {
     const e = email.trim().toLowerCase()
-    if (code.trim().length < 6) return toast.error('Enter the 6-digit code')
+    if (code.trim().length < 4) return toast.error('Enter the code from your email')
     setBusy(true)
     try {
       const { error } = await supabase.auth.verifyOtp({
@@ -174,16 +174,16 @@ export default function Login() {
           {step === 'code' && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="code">6-digit code sent to {email}</Label>
+                <Label htmlFor="code">Code sent to {email}</Label>
                 <Input
                   id="code"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  maxLength={6}
+                  maxLength={10}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                   onKeyDown={(e) => e.key === 'Enter' && verifyCode()}
-                  placeholder="123456"
+                  placeholder="Enter the code"
                   className="text-center text-lg tracking-widest"
                 />
               </div>
