@@ -3,14 +3,18 @@ import { toast } from 'sonner'
 import { AccountShell } from '@/components/AccountShell'
 import { useAuth } from '@/lib/auth'
 import { callFunction } from '@/lib/functions'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div>
+    <div className="min-w-0">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <p className="mt-0.5 text-sm">{value || <span className="text-muted-foreground">—</span>}</p>
+      <p className="mt-0.5 break-words text-sm">
+        {value || <span className="text-muted-foreground">—</span>}
+      </p>
     </div>
   )
 }
@@ -20,6 +24,8 @@ export default function MyDetails() {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [pw, setPw] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
   const fees = Number(member?.fees_owed ?? 0)
 
   async function sendChange() {
@@ -37,10 +43,26 @@ export default function MyDetails() {
     }
   }
 
+  async function savePassword() {
+    if (pw.length < 8) return toast.error('Password must be at least 8 characters')
+    setPwBusy(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw })
+      if (error) throw error
+      await supabase.rpc('mark_password_set')
+      toast.success('Password saved. You can use it to log in next time.')
+      setPw('')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setPwBusy(false)
+    }
+  }
+
   return (
     <AccountShell>
       <div className="max-w-lg space-y-6">
-        <div className="grid grid-cols-2 gap-5 rounded-lg border bg-card p-5">
+        <div className="grid grid-cols-1 gap-5 rounded-lg border bg-card p-5 sm:grid-cols-2">
           <Field label="Name" value={member?.name} />
           <Field label="Email" value={member?.email} />
           <Field label="Phone" value={member?.phone} />
@@ -49,6 +71,28 @@ export default function MyDetails() {
           <Field label="Fees owed" value={fees > 0 ? `₪${fees.toFixed(2)}` : 'None'} />
         </div>
 
+        {/* Password */}
+        <div className="rounded-lg border bg-card p-5">
+          <h2 className="text-sm font-semibold">Password</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Optional — you can always log in with an emailed code instead. Set or
+            change a password here.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Input
+              type="password"
+              autoComplete="new-password"
+              placeholder="New password (min 8 characters)"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+            />
+            <Button onClick={savePassword} disabled={pwBusy} className="shrink-0">
+              {pwBusy ? 'Saving…' : 'Save password'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Request a change */}
         <div className="rounded-lg border bg-card p-5">
           <p className="text-sm text-muted-foreground">
             Your details are managed by the library. Need something changed?

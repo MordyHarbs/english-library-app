@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { AdminShell } from '@/components/AdminShell'
@@ -22,7 +23,11 @@ type Filter = 'all' | 'overdue' | 'due_soon'
 export default function Loans() {
   const { data: loans, isLoading } = useOpenLoans()
   const qc = useQueryClient()
-  const [filter, setFilter] = useState<Filter>('all')
+  const [searchParams] = useSearchParams()
+  const initialFilter = searchParams.get('filter')
+  const [filter, setFilter] = useState<Filter>(
+    initialFilter === 'overdue' || initialFilter === 'due_soon' ? initialFilter : 'all',
+  )
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [extendOpen, setExtendOpen] = useState(false)

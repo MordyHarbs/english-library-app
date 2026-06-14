@@ -48,14 +48,14 @@ export default function AdminOverview() {
         <StatCard to="/admin/reservations" label="Pending items" value={stats?.pending} icon={Inbox} />
         <StatCard to="/admin/loans" label="Books out" value={stats?.out} icon={BookCopy} />
         <StatCard
-          to="/admin/loans"
+          to="/admin/loans?filter=overdue"
           label="Overdue"
           value={stats?.overdue}
           icon={AlertTriangle}
           tone="danger"
         />
         <StatCard
-          to="/admin/loans"
+          to="/admin/loans?filter=due_soon"
           label="Due soon"
           value={stats?.dueSoon}
           icon={Clock}

@@ -75,11 +75,11 @@ export function BookCard({
         >
           {inCart ? (
             <>
-              <X className="size-4" /> Remove from request
+              <X className="size-4" /> Remove
             </>
           ) : (
             <>
-              <Plus className="size-4" /> Add to request
+              <Plus className="size-4" /> Add
             </>
           )}
         </button>

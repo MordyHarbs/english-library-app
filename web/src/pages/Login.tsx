@@ -39,12 +39,14 @@ export default function Login() {
     navigate(from ?? (isAdmin ? '/admin' : '/account/books'), { replace: true })
   }
 
-  async function sendCode() {
+  // Step 1: check the email is a member, then route to password (if they have
+  // one) or send a code.
+  async function continueEmail() {
     const e = email.trim().toLowerCase()
     if (!emailRe.test(e)) return toast.error('Enter a valid email address')
     setBusy(true)
     try {
-      const res = await callFunction<{ ok: boolean; reason?: string }>(
+      const res = await callFunction<{ ok: boolean; reason?: string; hasPassword?: boolean }>(
         'request-login-code',
         { email: e },
       )
@@ -55,17 +57,38 @@ export default function Login() {
             { duration: 7000 },
           )
         } else {
-          toast.error('Could not send a code. Please try again.')
+          toast.error('Something went wrong. Please try again.')
         }
         return
       }
-      const { error } = await supabase.auth.signInWithOtp({
-        email: e,
-        options: { shouldCreateUser: false },
-      })
-      if (error) throw error
-      setStep('code')
-      toast.success('We emailed you a 6-digit code.')
+      if (res.hasPassword) {
+        setStep('password')
+      } else {
+        await sendOtp()
+      }
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Send the email code and move to the code step. (Membership already verified.)
+  async function sendOtp() {
+    const e = email.trim().toLowerCase()
+    const { error } = await supabase.auth.signInWithOtp({
+      email: e,
+      options: { shouldCreateUser: false },
+    })
+    if (error) throw error
+    setStep('code')
+    toast.success('We emailed you a login code.')
+  }
+
+  async function useCodeInstead() {
+    setBusy(true)
+    try {
+      await sendOtp()
     } catch (err) {
       toast.error((err as Error).message)
     } finally {
@@ -134,20 +157,13 @@ export default function Login() {
                   inputMode="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendCode()}
+                  onKeyDown={(e) => e.key === 'Enter' && continueEmail()}
                   placeholder="you@example.com"
                 />
               </div>
-              <Button className="w-full" onClick={sendCode} disabled={busy}>
-                Email me a login code
+              <Button className="w-full" onClick={continueEmail} disabled={busy}>
+                Continue
               </Button>
-              <button
-                type="button"
-                className="w-full text-sm text-muted-foreground underline"
-                onClick={() => setStep('password')}
-              >
-                I have a password
-              </button>
             </>
           )}
 
@@ -185,21 +201,12 @@ export default function Login() {
           {step === 'password' && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="pw-email">Email</Label>
-                <Input
-                  id="pw-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pw">Password</Label>
+                <Label htmlFor="pw">Password for {email}</Label>
                 <Input
                   id="pw"
                   type="password"
                   autoComplete="current-password"
+                  autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && loginWithPassword()}
@@ -211,12 +218,20 @@ export default function Login() {
               <button
                 type="button"
                 className="w-full text-sm text-muted-foreground underline"
+                onClick={useCodeInstead}
+                disabled={busy}
+              >
+                Email me a code instead
+              </button>
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground underline"
                 onClick={() => {
                   setPassword('')
                   setStep('email')
                 }}
               >
-                Email me a code instead (or forgot password)
+                Use a different email
               </button>
             </>
           )}

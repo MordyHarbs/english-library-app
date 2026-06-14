@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     // Gate: must be an existing member.
     const { data: member, error } = await db
       .from('members')
-      .select('id')
+      .select('id, has_password')
       .eq('email', normalized)
       .maybeSingle()
     if (error) throw error
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       throw createErr
     }
 
-    return json({ ok: true })
+    return json({ ok: true, hasPassword: member.has_password === true })
   } catch (e) {
     console.error('request-login-code:', e)
     return json({ ok: false, reason: 'server_error' }, 500)

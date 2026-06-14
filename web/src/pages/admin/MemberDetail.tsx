@@ -46,9 +46,9 @@ function useMemberDetail(id: string | undefined) {
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm">{value || '—'}</p>
+      <p className="mt-0.5 break-words text-sm">{value || '—'}</p>
     </div>
   )
 }
@@ -89,7 +89,7 @@ export default function MemberDetail() {
 
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
         {/* Profile */}
-        <div className="grid grid-cols-2 gap-4 self-start rounded-lg border bg-card p-5">
+        <div className="grid grid-cols-1 gap-4 self-start rounded-lg border bg-card p-5 sm:grid-cols-2">
           <Field label="Email" value={m.email} />
           <Field label="Phone" value={m.phone} />
           <Field label="Address" value={m.address} />
