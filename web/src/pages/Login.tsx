@@ -12,7 +12,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -133,7 +132,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Ayalot Library</CardTitle>
+          <img src="/logo.png" alt="Ayalot Library" className="mx-auto mb-1 h-12 w-auto" />
           <CardDescription>
             {step === 'setPassword'
               ? 'Optionally set a password for next time'
