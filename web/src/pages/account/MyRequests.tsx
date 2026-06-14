@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { AccountShell } from '@/components/AccountShell'
 import { BookThumb } from '@/components/BookThumb'
+import { BookDialog } from '@/components/BookDialog'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useMyReservations } from '@/lib/account'
 import { fmtDate } from '@/lib/format'
@@ -11,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 export default function MyRequests() {
   const { data: reservations, isLoading } = useMyReservations()
   const qc = useQueryClient()
+  const [openBook, setOpenBook] = useState<string | null>(null)
 
   async function cancelItem(itemId: string) {
     const { error } = await supabase.rpc('cancel_my_item', { item_id: itemId })
@@ -54,9 +57,12 @@ export default function MyRequests() {
                       className="h-16 w-11"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="font-display font-medium leading-snug">
+                      <button
+                        onClick={() => setOpenBook(it.book_id)}
+                        className="font-display text-left font-medium leading-snug hover:underline"
+                      >
                         {it.book?.title ?? 'Unknown book'}
-                      </p>
+                      </button>
                       {it.book?.author && (
                         <p className="text-xs text-muted-foreground">{it.book.author}</p>
                       )}
@@ -86,6 +92,8 @@ export default function MyRequests() {
           ))}
         </div>
       )}
+
+      <BookDialog bookId={openBook} onClose={() => setOpenBook(null)} allowAdd={false} />
     </AccountShell>
   )
 }

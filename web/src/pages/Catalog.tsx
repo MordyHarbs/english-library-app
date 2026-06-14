@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { BookCard } from '@/components/BookCard'
+import { BookDialog } from '@/components/BookDialog'
 import { useBooks, useAvailability, useCategories } from '@/lib/queries'
 import { Input } from '@/components/ui/input'
 import {
@@ -20,6 +21,7 @@ export default function Catalog() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [avail, setAvail] = useState('all')
+  const [openBook, setOpenBook] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     if (!books) return []
@@ -106,11 +108,14 @@ export default function Catalog() {
                 key={book.id}
                 book={book}
                 availability={availability?.[book.id]}
+                onOpen={setOpenBook}
               />
             ))}
           </div>
         </>
       )}
+
+      <BookDialog bookId={openBook} onClose={() => setOpenBook(null)} />
     </AppShell>
   )
 }

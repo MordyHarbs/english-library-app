@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { BookOpen, Check, Plus } from 'lucide-react'
 import type { CatalogBook, Availability } from '@/lib/queries'
 import { coverUrl } from '@/lib/covers'
@@ -9,11 +8,12 @@ import { cn } from '@/lib/utils'
 export function BookCard({
   book,
   availability,
+  onOpen,
 }: {
   book: CatalogBook
   availability: Availability | undefined
+  onOpen: (bookId: string) => void
 }) {
-  const navigate = useNavigate()
   const { has, toggle } = useCart()
   const inCart = has(book.id)
   const cover = coverUrl(book.cover_path)
@@ -21,7 +21,7 @@ export function BookCard({
   return (
     <div className="group flex flex-col overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
       <button
-        onClick={() => navigate(`/books/${book.id}`)}
+        onClick={() => onOpen(book.id)}
         className="relative aspect-[2/3] w-full overflow-hidden bg-muted text-left"
         aria-label={`View ${book.title}`}
       >
@@ -43,7 +43,7 @@ export function BookCard({
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex-1">
           <button
-            onClick={() => navigate(`/books/${book.id}`)}
+            onClick={() => onOpen(book.id)}
             className="font-display line-clamp-2 text-left text-[0.95rem] font-medium leading-snug hover:underline"
           >
             {book.title}

@@ -11,6 +11,7 @@ import {
   Settings,
   Library,
   LogOut,
+  ChevronLeft,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -88,8 +89,16 @@ export function AdminShell({
       </aside>
 
       <main className="flex-1 px-4 py-6 lg:px-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <Link
+              to="/"
+              className="mb-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="size-4" /> Back to public site
+            </Link>
+            <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
+          </div>
           {actions}
         </div>
         {children}

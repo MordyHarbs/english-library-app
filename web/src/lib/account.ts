@@ -21,6 +21,7 @@ export interface MyLoan {
 export interface MyReservationItem {
   id: string
   status: ItemStatus
+  book_id: string
   book: BookRef | null
 }
 
@@ -62,7 +63,7 @@ export function useMyReservations() {
       const { data, error } = await supabase
         .from('reservations')
         .select(
-          'id, created_at, pickup_time, comments, admin_note, finalized_at, reservation_items(id, status, books(title, author, cover_path))',
+          'id, created_at, pickup_time, comments, admin_note, finalized_at, reservation_items(id, status, book_id, books(title, author, cover_path))',
         )
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -76,6 +77,7 @@ export function useMyReservations() {
         items: (r.reservation_items ?? []).map((it) => ({
           id: it.id,
           status: it.status,
+          book_id: it.book_id,
           book: (it.books as BookRef | null) ?? null,
         })),
       }))

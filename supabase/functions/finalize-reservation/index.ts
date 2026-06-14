@@ -4,10 +4,11 @@
 import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
+import { addDays, jerusalemToday, fmt } from '../_shared/dates.ts'
 
 interface Decision {
   item_id: string
-  status: 'approved' | 'rejected'
+  status: 'approved' | 'rejected' | 'lend'
 }
 
 Deno.serve(async (req) => {
@@ -31,16 +32,53 @@ Deno.serve(async (req) => {
 
     const db = serviceClient()
 
+    // Reservation (for member) + decided items' book ids (for lending).
+    const { data: res } = await db
+      .from('reservations')
+      .select('member_id')
+      .eq('id', reservation_id)
+      .maybeSingle()
+    const { data: itemRows } = await db
+      .from('reservation_items')
+      .select('id, book_id')
+      .in('id', decisions.map((d) => d.item_id))
+    const bookOf = new Map((itemRows ?? []).map((r) => [r.id, r.book_id]))
+
+    // Due date for any "lend now" decisions.
+    const { data: durRow } = await db
+      .from('settings')
+      .select('value')
+      .eq('key', 'loan_duration_days')
+      .maybeSingle()
+    const dueDate = fmt(addDays(jerusalemToday(), Number(durRow?.value ?? 14)))
+
     // Apply each decision (only if still pending — the status guard enforces too).
     for (const d of decisions) {
-      if (d.status !== 'approved' && d.status !== 'rejected') continue
-      const { error } = await db
-        .from('reservation_items')
-        .update({ status: d.status, decided_at: new Date().toISOString() })
-        .eq('id', d.item_id)
-        .eq('reservation_id', reservation_id)
-        .eq('status', 'pending')
-      if (error) throw error
+      if (d.status === 'approved' || d.status === 'rejected') {
+        const { error } = await db
+          .from('reservation_items')
+          .update({ status: d.status, decided_at: new Date().toISOString() })
+          .eq('id', d.item_id)
+          .eq('reservation_id', reservation_id)
+          .eq('status', 'pending')
+        if (error) throw error
+      } else if (d.status === 'lend') {
+        if (!res?.member_id) continue // can't lend a guest request without a member
+        // Approve, then create the loan (trigger marks the item fulfilled).
+        await db
+          .from('reservation_items')
+          .update({ status: 'approved', decided_at: new Date().toISOString() })
+          .eq('id', d.item_id)
+          .eq('reservation_id', reservation_id)
+          .eq('status', 'pending')
+        const { error } = await db.from('loans').insert({
+          book_id: bookOf.get(d.item_id),
+          member_id: res.member_id,
+          reservation_item_id: d.item_id,
+          due_date: dueDate,
+        })
+        if (error) console.error('lend during finalize failed:', error.message)
+      }
     }
 
     await db
@@ -89,7 +127,7 @@ async function emailSummary(
     .in('id', ids)
 
   const approved = (items ?? [])
-    .filter((i) => i.status === 'approved')
+    .filter((i) => i.status === 'approved' || i.status === 'fulfilled')
     .map((i) => (i.books as { title: string } | null)?.title ?? 'book')
   const rejected = (items ?? [])
     .filter((i) => i.status === 'rejected')

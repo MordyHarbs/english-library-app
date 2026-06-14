@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-type Decision = 'pending' | 'approved' | 'rejected'
+type Decision = 'pending' | 'approved' | 'rejected' | 'lend'
 
 export default function ReservationDetail() {
   const { id } = useParams()
@@ -67,11 +67,11 @@ export default function ReservationDetail() {
 
   async function finalize() {
     const changes = decidableItems
-      .filter((it) => decisions[it.id] === 'approved' || decisions[it.id] === 'rejected')
-      .map((it) => ({ item_id: it.id, status: decisions[it.id] as 'approved' | 'rejected' }))
+      .filter((it) => ['approved', 'rejected', 'lend'].includes(decisions[it.id]))
+      .map((it) => ({ item_id: it.id, status: decisions[it.id] as 'approved' | 'rejected' | 'lend' }))
 
     if (changes.length === 0)
-      return toast.error('Set at least one book to Approve or Reject first.')
+      return toast.error('Set at least one book to Approve, Lend, or Reject first.')
 
     setBusy(true)
     try {
@@ -139,7 +139,10 @@ export default function ReservationDetail() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">No decision</SelectItem>
-                        <SelectItem value="approved">Approve</SelectItem>
+                        <SelectItem value="approved">Approve (hold)</SelectItem>
+                        {r.member_id && (
+                          <SelectItem value="lend">Approve & lend now</SelectItem>
+                        )}
                         <SelectItem value="rejected">Reject</SelectItem>
                       </SelectContent>
                     </Select>
