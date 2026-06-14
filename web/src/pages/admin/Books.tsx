@@ -6,6 +6,8 @@ import { Plus, Pencil, BookOpen, Trash2 } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { BookDialog } from '@/components/BookDialog'
 import { useBooks, useCategories, type CatalogBook } from '@/lib/queries'
+import { useOpenLoans } from '@/lib/manage'
+import { fmtDate } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
 import { coverUrl } from '@/lib/covers'
 import { Button } from '@/components/ui/button'
@@ -24,7 +26,13 @@ type Draft = Partial<CatalogBook> & { id?: string; categoryName?: string | null 
 export default function Books() {
   const { data: books, isLoading } = useBooks()
   const { data: categories } = useCategories()
+  const { data: openLoans } = useOpenLoans()
   const qc = useQueryClient()
+  const loanByBook = useMemo(
+    () => new Map((openLoans ?? []).map((l) => [l.book_id, l])),
+    [openLoans],
+  )
+  const [outInfo, setOutInfo] = useState<{ title: string; member: string; due: string } | null>(null)
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
@@ -166,6 +174,23 @@ export default function Books() {
                     </p>
                   </div>
                 </button>
+                {(() => {
+                  const loan = loanByBook.get(b.id)
+                  return loan ? (
+                    <button
+                      onClick={() =>
+                        setOutInfo({ title: b.title, member: loan.memberName, due: loan.due_date })
+                      }
+                      className="shrink-0 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning hover:bg-warning/25"
+                    >
+                      Out
+                    </button>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-success/12 px-2.5 py-0.5 text-xs font-medium text-success">
+                      Available
+                    </span>
+                  )
+                })()}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -273,6 +298,19 @@ export default function Books() {
       </Dialog>
 
       <BookDialog bookId={openBook} onClose={() => setOpenBook(null)} allowAdd={false} />
+
+      <Dialog open={!!outInfo} onOpenChange={(o) => !o && setOutInfo(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">{outInfo?.title}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm">
+            Currently borrowed by <span className="font-medium">{outInfo?.member}</span>
+            <br />
+            Due {outInfo ? fmtDate(outInfo.due) : ''}
+          </p>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   )
 }
