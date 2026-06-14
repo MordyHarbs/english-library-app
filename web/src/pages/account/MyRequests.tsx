@@ -1,19 +1,38 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { AccountShell } from '@/components/AccountShell'
 import { BookThumb } from '@/components/BookThumb'
 import { BookDialog } from '@/components/BookDialog'
-import { StatusBadge } from '@/components/StatusBadge'
-import { useMyReservations } from '@/lib/account'
+import { StatusBadge, type Status } from '@/components/StatusBadge'
+import { useMyReservations, type MyReservationItem } from '@/lib/account'
 import { fmtDate } from '@/lib/format'
 import { supabase } from '@/lib/supabase'
+
+function requestStatus(item: MyReservationItem): Status {
+  if (item.status === 'fulfilled' && item.date_returned) return 'returned'
+  return item.status
+}
+
+function isActiveRequestItem(item: MyReservationItem) {
+  return ['pending', 'approved', 'fulfilled'].includes(requestStatus(item))
+}
 
 export default function MyRequests() {
   const { data: reservations, isLoading } = useMyReservations()
   const qc = useQueryClient()
   const [openBook, setOpenBook] = useState<string | null>(null)
+  const [activeOnly, setActiveOnly] = useState(false)
+
+  const visibleReservations = useMemo(() => {
+    return (reservations ?? [])
+      .map((r) => ({
+        ...r,
+        items: activeOnly ? r.items.filter(isActiveRequestItem) : r.items,
+      }))
+      .filter((r) => r.items.length > 0)
+  }, [activeOnly, reservations])
 
   async function cancelItem(itemId: string) {
     const { error } = await supabase.rpc('cancel_my_item', { item_id: itemId })
@@ -33,9 +52,34 @@ export default function MyRequests() {
             Browse the catalog
           </Link>
         </div>
+      ) : visibleReservations.length === 0 ? (
+        <div className="space-y-4">
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+            />
+            Show only active requests
+          </label>
+          <div className="rounded-lg border bg-card p-8 text-center">
+            <p className="text-muted-foreground">You have no active requests right now.</p>
+          </div>
+        </div>
       ) : (
         <div className="space-y-5">
-          {reservations!.map((r) => (
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+            />
+            Show only active requests
+          </label>
+
+          {visibleReservations.map((r) => (
             <div key={r.id} className="overflow-hidden rounded-lg border bg-card">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-secondary/40 px-4 py-2.5">
                 <span className="text-sm font-medium">
@@ -67,7 +111,7 @@ export default function MyRequests() {
                         <p className="text-xs text-muted-foreground">{it.book.author}</p>
                       )}
                       <div className="mt-1">
-                        <StatusBadge status={it.status} />
+                        <StatusBadge status={requestStatus(it)} />
                       </div>
                     </div>
                     {it.status === 'pending' && (

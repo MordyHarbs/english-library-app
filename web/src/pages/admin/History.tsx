@@ -1,12 +1,18 @@
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { AdminShell } from '@/components/AdminShell'
 import { useLoanHistory } from '@/lib/manage'
+import { callFunction } from '@/lib/functions'
 import { fmtDate } from '@/lib/format'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function History() {
   const { data: loans, isLoading } = useLoanHistory()
+  const qc = useQueryClient()
   const [search, setSearch] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -14,6 +20,21 @@ export default function History() {
       (l) => !q || `${l.bookTitle} ${l.memberName}`.toLowerCase().includes(q),
     )
   }, [loans, search])
+
+  async function deleteLoan(id: string) {
+    if (!window.confirm('Delete this lending history record? This cannot be undone.')) return
+    setBusy(true)
+    try {
+      await callFunction('delete-loans', { loan_ids: [id] })
+      toast.success('Lending history record deleted.')
+      qc.invalidateQueries({ queryKey: ['admin'] })
+      qc.invalidateQueries({ queryKey: ['availability'] })
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <AdminShell title="Lending history">
@@ -41,6 +62,9 @@ export default function History() {
                 <div>Out {fmtDate(l.date_given)}</div>
                 <div>Returned {fmtDate(l.date_returned)}</div>
               </div>
+              <Button variant="destructive" size="sm" disabled={busy} onClick={() => deleteLoan(l.id)}>
+                Delete
+              </Button>
             </div>
           ))}
         </div>

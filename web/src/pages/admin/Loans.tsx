@@ -93,6 +93,20 @@ export default function Loans() {
     }
   }
 
+  async function deleteSelected() {
+    if (!window.confirm(`Delete ${ids.length} lending record${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      await callFunction('delete-loans', { loan_ids: ids })
+      toast.success(`Deleted ${ids.length} lending record${ids.length === 1 ? '' : 's'}.`)
+      refresh()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <AdminShell title="Open loans">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -159,6 +173,9 @@ export default function Loans() {
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
             <span className="text-sm font-medium">{ids.length} selected</span>
             <div className="flex gap-2">
+              <Button variant="destructive" disabled={busy} onClick={deleteSelected}>
+                Delete
+              </Button>
               <Button variant="outline" disabled={busy} onClick={() => setExtendOpen(true)}>
                 Extend
               </Button>

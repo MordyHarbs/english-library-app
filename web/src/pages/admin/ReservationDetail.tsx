@@ -102,6 +102,23 @@ export default function ReservationDetail() {
     }
   }
 
+  async function deleteReservation() {
+    if (!r) return
+    if (!window.confirm(`Delete ${r.name}'s reservation? This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      await callFunction('delete-reservations', { reservation_ids: [r.id] })
+      toast.success('Reservation deleted.')
+      qc.invalidateQueries({ queryKey: ['admin'] })
+      qc.invalidateQueries({ queryKey: ['myReservations'] })
+      navigate('/admin/reservations')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <AdminShell title="Reservation">
       <button
@@ -186,6 +203,12 @@ export default function ReservationDetail() {
               {r.pickup_time && <div>Pickup: {r.pickup_time}</div>}
               {r.comments && <div className="text-foreground">Note: {r.comments}</div>}
             </dl>
+          </div>
+
+          <div className="rounded-lg border bg-card p-4">
+            <Button variant="destructive" className="w-full" disabled={busy} onClick={deleteReservation}>
+              Delete reservation
+            </Button>
           </div>
 
           <div className="rounded-lg border bg-card p-4">

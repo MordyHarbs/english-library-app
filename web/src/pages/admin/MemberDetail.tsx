@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { addDays, format } from 'date-fns'
 import { ArrowLeft, Search, Plus, X } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -11,6 +12,13 @@ import { useBooks } from '@/lib/queries'
 import { fmtDate, isOverdue } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface MemberLoan {
   id: string
@@ -67,6 +75,8 @@ export default function MemberDetail() {
   const [busy, setBusy] = useState(false)
   const [bookSearch, setBookSearch] = useState('')
   const [toLend, setToLend] = useState<{ id: string; title: string }[]>([])
+  const [extendLoan, setExtendLoan] = useState<MemberLoan | null>(null)
+  const [newDue, setNewDue] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'))
 
   const bookMatches = useMemo(() => {
     const q = bookSearch.trim().toLowerCase()
@@ -80,6 +90,8 @@ export default function MemberDetail() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['admin'] })
     qc.invalidateQueries({ queryKey: ['availability'] })
+    qc.invalidateQueries({ queryKey: ['myLoans'] })
+    qc.invalidateQueries({ queryKey: ['myReservations'] })
   }
 
   async function returnLoan(loanId: string) {
@@ -87,6 +99,35 @@ export default function MemberDetail() {
     try {
       await callFunction('return-books', { loan_ids: [loanId] })
       toast.success('Returned.')
+      refresh()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function extendLoanDueDate() {
+    if (!extendLoan) return
+    setBusy(true)
+    try {
+      await callFunction('extend-books', { loan_ids: [extendLoan.id], new_due_date: newDue })
+      toast.success(`Extended ${extendLoan.title} to ${fmtDate(newDue)}.`)
+      setExtendLoan(null)
+      refresh()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deleteLoan(loan: MemberLoan) {
+    if (!window.confirm(`Delete the lending record for ${loan.title}? This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      await callFunction('delete-loans', { loan_ids: [loan.id] })
+      toast.success('Lending record deleted.')
       refresh()
     } catch (e) {
       toast.error((e as Error).message)
@@ -229,8 +270,17 @@ export default function MemberDetail() {
                     <span className="hidden text-xs text-muted-foreground sm:inline">
                       {fmtDate(l.due_date)}
                     </span>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => {
+                      setExtendLoan(l)
+                      setNewDue(l.due_date)
+                    }}>
+                      Extend
+                    </Button>
                     <Button size="sm" variant="outline" disabled={busy} onClick={() => returnLoan(l.id)}>
                       Return
+                    </Button>
+                    <Button size="sm" variant="destructive" disabled={busy} onClick={() => deleteLoan(l)}>
+                      Delete
                     </Button>
                   </div>
                 ))}
@@ -253,6 +303,9 @@ export default function MemberDetail() {
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {fmtDate(l.date_given)} → {fmtDate(l.date_returned)}
                     </span>
+                    <Button size="sm" variant="destructive" disabled={busy} onClick={() => deleteLoan(l)}>
+                      Delete
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -260,6 +313,24 @@ export default function MemberDetail() {
           </section>
         </div>
       </div>
+
+      <Dialog open={!!extendLoan} onOpenChange={(open) => !open && setExtendLoan(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Extend {extendLoan?.title}</DialogTitle>
+          </DialogHeader>
+          <label className="text-sm font-medium">New due date</label>
+          <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setExtendLoan(null)}>
+              Cancel
+            </Button>
+            <Button disabled={busy} onClick={extendLoanDueDate}>
+              Extend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   )
 }

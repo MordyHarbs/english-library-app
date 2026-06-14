@@ -22,6 +22,8 @@ export interface MyReservationItem {
   id: string
   status: ItemStatus
   book_id: string
+  loan_id: string | null
+  date_returned: string | null
   book: BookRef | null
 }
 
@@ -80,11 +82,26 @@ export function useMyReservations() {
       const { data, error } = await supabase
         .from('reservations')
         .select(
-          'id, created_at, pickup_time, comments, admin_note, finalized_at, reservation_items(id, status, book_id, books(title, author, cover_path))',
+          'id, created_at, pickup_time, comments, admin_note, finalized_at, reservation_items(id, status, book_id, loan_id, books(title, author, cover_path))',
         )
         .eq('member_id', mid)
         .order('created_at', { ascending: false })
       if (error) throw error
+
+      const loanIds = (data ?? [])
+        .flatMap((r) => r.reservation_items ?? [])
+        .map((it) => it.loan_id)
+        .filter((id): id is string => !!id)
+      const loanReturnMap = new Map<string, string | null>()
+      if (loanIds.length > 0) {
+        const { data: loans, error: loanError } = await supabase
+          .from('loans')
+          .select('id, date_returned')
+          .in('id', loanIds)
+        if (loanError) throw loanError
+        for (const loan of loans ?? []) loanReturnMap.set(loan.id, loan.date_returned)
+      }
+
       return (data ?? []).map((r) => ({
         id: r.id,
         created_at: r.created_at,
@@ -96,6 +113,8 @@ export function useMyReservations() {
           id: it.id,
           status: it.status,
           book_id: it.book_id,
+          loan_id: it.loan_id,
+          date_returned: it.loan_id ? (loanReturnMap.get(it.loan_id) ?? null) : null,
           book: (it.books as BookRef | null) ?? null,
         })),
       }))
