@@ -39,14 +39,14 @@ export default function Login() {
     navigate(from ?? (isAdmin ? '/admin' : '/account/books'), { replace: true })
   }
 
-  // Step 1: check the email is a member, then route to password (if they have
-  // one) or send a code.
+  // Step 1: check the email is a member, then offer password login. The code
+  // fallback stays available for members who have not set a password yet.
   async function continueEmail() {
     const e = email.trim().toLowerCase()
     if (!emailRe.test(e)) return toast.error('Enter a valid email address')
     setBusy(true)
     try {
-      const res = await callFunction<{ ok: boolean; reason?: string; hasPassword?: boolean }>(
+      const res = await callFunction<{ ok: boolean; reason?: string }>(
         'request-login-code',
         { email: e },
       )
@@ -61,11 +61,7 @@ export default function Login() {
         }
         return
       }
-      if (res.hasPassword) {
-        setStep('password')
-      } else {
-        await sendOtp()
-      }
+      setStep('password')
     } catch (err) {
       toast.error((err as Error).message)
     } finally {
@@ -221,7 +217,7 @@ export default function Login() {
                 onClick={useCodeInstead}
                 disabled={busy}
               >
-                Email me a code instead
+                I don't have a password - email me a code
               </button>
               <button
                 type="button"

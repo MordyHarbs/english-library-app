@@ -10,7 +10,7 @@ import { callFunction } from '@/lib/functions'
 import { Button } from '@/components/ui/button'
 
 export default function MyBooks() {
-  const { data: loans, isLoading } = useMyLoans()
+  const { data: loans, isLoading, error } = useMyLoans()
   const [requesting, setRequesting] = useState<string | null>(null)
   const open = (loans ?? []).filter((l) => !l.date_returned)
 
@@ -30,6 +30,11 @@ export default function MyBooks() {
     <AccountShell>
       {isLoading ? (
         <p className="py-12 text-center text-muted-foreground">Loading…</p>
+      ) : error ? (
+        <div className="rounded-lg border bg-card p-8 text-center">
+          <p className="text-destructive">Couldn't load your books.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        </div>
       ) : open.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center">
           <p className="text-muted-foreground">You have no books out right now.</p>

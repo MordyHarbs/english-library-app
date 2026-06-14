@@ -26,6 +26,11 @@ import {
 
 type Decision = 'pending' | 'approved' | 'rejected' | 'lend'
 
+interface FinalizeResult {
+  ok?: boolean
+  failed?: { item_id: string; reason: string }[]
+}
+
 export default function ReservationDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -75,13 +80,20 @@ export default function ReservationDetail() {
 
     setBusy(true)
     try {
-      await callFunction('finalize-reservation', {
+      const res = await callFunction<FinalizeResult>('finalize-reservation', {
         reservation_id: r!.id,
         decisions: changes,
         message: message.trim(),
       })
-      toast.success('Reservation finalized — the member has been emailed.')
+      const failed = res.failed ?? []
+      if (failed.length > 0) {
+        toast.error(`${failed.length} book(s) couldn't be lent: ${failed[0].reason}`)
+      } else {
+        toast.success('Reservation finalized — the member has been emailed.')
+      }
       qc.invalidateQueries({ queryKey: ['admin'] })
+      qc.invalidateQueries({ queryKey: ['myLoans'] })
+      qc.invalidateQueries({ queryKey: ['myReservations'] })
       navigate('/admin/reservations')
     } catch (e) {
       toast.error((e as Error).message)

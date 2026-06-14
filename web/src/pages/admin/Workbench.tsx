@@ -19,6 +19,11 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
+interface LendBooksResult {
+  loan_ids?: string[]
+  failed?: { book_id: string; reason: string }[]
+}
+
 export default function Workbench() {
   const qc = useQueryClient()
   const [mode, setMode] = useState<'member' | 'book'>('member')
@@ -70,6 +75,8 @@ export default function Workbench() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['admin'] })
     qc.invalidateQueries({ queryKey: ['availability'] })
+    qc.invalidateQueries({ queryKey: ['myLoans'] })
+    qc.invalidateQueries({ queryKey: ['myReservations'] })
     setHoldSel(new Set())
     setLoanSel(new Set())
     setBookSel(new Set())
@@ -87,15 +94,33 @@ export default function Workbench() {
       .filter((h) => holdSel.has(h.reservation_item_id))
       .map((h) => ({ book_id: h.book_id, reservation_item_id: h.reservation_item_id }))
     if (items.length === 0) return
-    await run(() => callFunction('lend-books', { member_id: member!.id, items }), `Lent ${items.length} book(s).`)
+    await lendItems(items, `Lent ${items.length} book(s).`)
   }
 
   async function lendAdHoc() {
     if (adHoc.length === 0) return
-    await run(
-      () => callFunction('lend-books', { member_id: member!.id, items: adHoc.map((a) => ({ book_id: a.id })) }),
+    await lendItems(
+      adHoc.map((a) => ({ book_id: a.id })),
       `Lent ${adHoc.length} book(s) to ${member!.name}.`,
     )
+  }
+
+  async function lendItems(items: { book_id: string; reservation_item_id?: string | null }[], ok: string) {
+    setBusy(true)
+    try {
+      const res = await callFunction<LendBooksResult>('lend-books', { member_id: member!.id, items })
+      const failed = res.failed ?? []
+      const lent = res.loan_ids?.length ?? items.length - failed.length
+      if (lent > 0) toast.success(lent === items.length ? ok : `Lent ${lent} of ${items.length} book(s).`)
+      if (failed.length > 0) {
+        toast.error(`${failed.length} couldn't be lent: ${failed[0].reason}`)
+      }
+      refresh()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function doReturn(ids: string[]) {

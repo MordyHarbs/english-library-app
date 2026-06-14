@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
       .eq('key', 'loan_duration_days')
       .maybeSingle()
     const dueDate = fmt(addDays(jerusalemToday(), Number(durRow?.value ?? 14)))
+    const failed: { item_id: string; reason: string }[] = []
 
     // Apply each decision (only if still pending — the status guard enforces too).
     for (const d of decisions) {
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
           reservation_item_id: d.item_id,
           due_date: dueDate,
         })
-        if (error) console.error('lend during finalize failed:', error.message)
+        if (error) failed.push({ item_id: d.item_id, reason: error.message })
       }
     }
 
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
       console.error('finalize email failed:', e.message),
     )
 
-    return json({ ok: true })
+    return json({ ok: failed.length === 0, failed })
   } catch (e) {
     console.error('finalize-reservation:', e)
     return json({ error: (e as Error).message }, 500)
