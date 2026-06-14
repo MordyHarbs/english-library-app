@@ -12,9 +12,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">
+        <div className="mx-auto flex h-20 w-full max-w-6xl items-center gap-3 px-4">
           <Link to="/" className="flex items-center">
-            <img src="/logo.png" alt="Ayalot Library" className="h-10 w-auto" />
+            <img src="/logo.png" alt="Ayalot Library" className="h-16 w-auto" />
           </Link>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
