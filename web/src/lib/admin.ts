@@ -13,29 +13,21 @@ export function useAdminOverview() {
     queryFn: async () => {
       const t = today()
       const soon = format(addDays(new Date(), 3), 'yyyy-MM-dd')
-      const [pending, out, overdue, dueSoon] = await Promise.all([
-        supabase
-          .from('reservation_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending'),
-        supabase.from('loans').select('*', { count: 'exact', head: true }).is('date_returned', null),
-        supabase
-          .from('loans')
-          .select('*', { count: 'exact', head: true })
-          .is('date_returned', null)
-          .lt('due_date', t),
-        supabase
-          .from('loans')
-          .select('*', { count: 'exact', head: true })
-          .is('date_returned', null)
-          .gte('due_date', t)
-          .lte('due_date', soon),
+
+      // Fetch the small working sets and count client-side (robust vs head-count).
+      const [openLoans, pendingItems] = await Promise.all([
+        supabase.from('loans').select('due_date').is('date_returned', null),
+        supabase.from('reservation_items').select('id').eq('status', 'pending'),
       ])
+      if (openLoans.error) throw openLoans.error
+      if (pendingItems.error) throw pendingItems.error
+
+      const loans = openLoans.data ?? []
       return {
-        pending: pending.count ?? 0,
-        out: out.count ?? 0,
-        overdue: overdue.count ?? 0,
-        dueSoon: dueSoon.count ?? 0,
+        pending: pendingItems.data?.length ?? 0,
+        out: loans.length,
+        overdue: loans.filter((l) => l.due_date < t).length,
+        dueSoon: loans.filter((l) => l.due_date >= t && l.due_date <= soon).length,
       }
     },
   })

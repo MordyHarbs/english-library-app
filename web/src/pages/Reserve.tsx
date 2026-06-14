@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { BookOpen, X, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
+import { BookDialog } from '@/components/BookDialog'
 import { useCart } from '@/lib/cart'
 import { useAuth } from '@/lib/auth'
 import { usePublicSettings } from '@/lib/queries'
@@ -26,6 +27,7 @@ export default function Reserve() {
   const [comments, setComments] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [openBook, setOpenBook] = useState<string | null>(null)
 
   // Prefill from the logged-in member.
   useEffect(() => {
@@ -134,7 +136,12 @@ export default function Reserve() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium leading-snug">{item.title}</p>
+                  <button
+                    onClick={() => setOpenBook(item.id)}
+                    className="text-left font-medium leading-snug hover:underline"
+                  >
+                    {item.title}
+                  </button>
                   {item.author && (
                     <p className="text-sm text-muted-foreground">{item.author}</p>
                   )}
@@ -244,6 +251,8 @@ export default function Reserve() {
           )}
         </div>
       </div>
+
+      <BookDialog bookId={openBook} onClose={() => setOpenBook(null)} allowAdd={false} />
     </AppShell>
   )
 }

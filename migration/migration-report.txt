@@ -1,0 +1,35 @@
+Migration review — 33 item(s) need attention:
+
+- Unrecognized "Paid" value "View comments" for Tema Harbater → set false
+- Unrecognized "Paid" value "View comments" for Mordy Harbater → set false
+- Unrecognized "Paid" value "Free for now" for Chana Perel Harbater → set false
+- Unrecognized "Paid" value "Free for now" for Miriam Katz → set false
+- Unrecognized "Paid" value "Free for now" for Chanie Silberstein → set false
+- Unrecognized "Paid" value "Free for now" for Necha Toba Selengut → set false
+- Unrecognized "Paid" value "Free for now" for רותי ויספיש → set false
+- Unrecognized "Paid" value "Free for now" for Hanna Gurwitz → set false
+- Unrecognized "Paid" value "Free for now" for Chava Nahem → set false
+- Unrecognized "Paid" value "Free for now" for Sivie Katz → set false
+- Unrecognized "Paid" value "Free for now" for Tzippi Engelberg → set false
+- Unrecognized "Paid" value "Free for now" for Aviva katsof → set false
+- Unrecognized "Paid" value "Free for now" for Miriam Levy → set false
+- Unrecognized "Paid" value "Free for now" for Shaindy Speiser → set false
+- Unrecognized "Paid" value "Free for now" for Nechama Stampler → set false
+- Unrecognized "Paid" value "Free for now" for Gila Rubin → set false
+- Unrecognized "Paid" value "Free for now" for Shaindy Gluck → set false
+- Unrecognized "Paid" value "Free for now" for Rivka Gefen → set false
+- Unrecognized "Paid" value "Free for now" for Penina schreiber → set false
+- Unrecognized "Paid" value "Free for now" for Leah stein → set false
+- Unrecognized "Paid" value "Free for now" for Reva Rubenstein → set false
+- Unrecognized "Paid" value "Free for now" for Mommy Shulman → set false
+- Unrecognized "Paid" value "Free for now" for Dina Vilensky → set false
+- Unrecognized "Paid" value "Free for now" for Chaya Chilik → set false
+- Unrecognized "Paid" value "Free for now" for Bubby Harbater → set false
+- Unrecognized "Paid" value "Free for now" for Zippy Gelernter → set false
+- Unrecognized "Paid" value "Free for now" for Esther Gershon → set false
+- Unrecognized "Paid" value "Free for now" for Yael Goldenberger → set false
+- Unrecognized "Paid" value "Free for now" for Naomi Friedman → set false
+- Unrecognized "Paid" value "Free for now" for Esti Salomon → set false
+- Unrecognized "Paid" value "Free for now" for Tali Greenberg → set false
+- Books out: member "Chaya Chalk" not found → row skipped
+- Books out: member "Chaya Chalk" not found → row skipped

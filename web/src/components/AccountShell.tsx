@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { LogOut, BookOpen } from 'lucide-react'
 import { AppShell } from './AppShell'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -25,15 +25,23 @@ export function AccountShell({ children }: { children: ReactNode }) {
             {member?.name ?? 'My account'}
           </h1>
         </div>
-        <button
-          onClick={async () => {
-            await signOut()
-            navigate('/')
-          }}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <LogOut className="size-4" /> Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <BookOpen className="size-4" /> Browse catalog
+          </Link>
+          <button
+            onClick={async () => {
+              await signOut()
+              navigate('/')
+            }}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="size-4" /> Sign out
+          </button>
+        </div>
       </div>
 
       <nav className="mb-6 flex gap-1 overflow-x-auto">

@@ -35,14 +35,29 @@ export interface MyReservation {
   items: MyReservationItem[]
 }
 
-/** All of the caller's loans (RLS limits to their own). */
+/** The members.id row for the logged-in auth user (or null). */
+async function currentMemberId(): Promise<string | null> {
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth?.user) return null
+  const { data } = await supabase
+    .from('members')
+    .select('id')
+    .eq('auth_user_id', auth.user.id)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
+/** The caller's OWN loans — scoped explicitly so admins don't see everyone's. */
 export function useMyLoans() {
   return useQuery({
     queryKey: ['myLoans'],
     queryFn: async (): Promise<MyLoan[]> => {
+      const mid = await currentMemberId()
+      if (!mid) return []
       const { data, error } = await supabase
         .from('loans')
         .select('id, date_given, due_date, date_returned, books(title, author, cover_path)')
+        .eq('member_id', mid)
         .order('due_date', { ascending: true })
       if (error) throw error
       return (data ?? []).map((l) => ({
@@ -60,11 +75,14 @@ export function useMyReservations() {
   return useQuery({
     queryKey: ['myReservations'],
     queryFn: async (): Promise<MyReservation[]> => {
+      const mid = await currentMemberId()
+      if (!mid) return []
       const { data, error } = await supabase
         .from('reservations')
         .select(
           'id, created_at, pickup_time, comments, admin_note, finalized_at, reservation_items(id, status, book_id, books(title, author, cover_path))',
         )
+        .eq('member_id', mid)
         .order('created_at', { ascending: false })
       if (error) throw error
       return (data ?? []).map((r) => ({

@@ -19,15 +19,22 @@ export default function Catalog() {
   const { data: categories } = useCategories()
 
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('all')
+  const [cats, setCats] = useState<Set<string>>(new Set())
   const [avail, setAvail] = useState('all')
   const [openBook, setOpenBook] = useState<string | null>(null)
+
+  const toggleCat = (id: string) =>
+    setCats((s) => {
+      const n = new Set(s)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
 
   const filtered = useMemo(() => {
     if (!books) return []
     const q = search.trim().toLowerCase()
     return books.filter((b) => {
-      if (category !== 'all' && b.category_id !== category) return false
+      if (cats.size > 0 && (!b.category_id || !cats.has(b.category_id))) return false
       if (avail !== 'all') {
         const isAvail = availability?.[b.id]?.is_available ?? true
         if (avail === 'available' && !isAvail) return false
@@ -39,7 +46,7 @@ export default function Catalog() {
       }
       return true
     })
-  }, [books, availability, search, category, avail])
+  }, [books, availability, search, cats, avail])
 
   return (
     <AppShell>
@@ -65,19 +72,6 @@ export default function Catalog() {
             className="pl-9"
           />
         </div>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="sm:w-48">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories?.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={avail} onValueChange={setAvail}>
           <SelectTrigger className="sm:w-40">
             <SelectValue placeholder="Availability" />
@@ -89,6 +83,37 @@ export default function Catalog() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Category chips (multi-select) */}
+      {categories && categories.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {categories.map((c) => {
+            const active = cats.has(c.id)
+            return (
+              <button
+                key={c.id}
+                onClick={() => toggleCat(c.id)}
+                className={
+                  'rounded-full border px-3 py-1 text-sm transition-colors ' +
+                  (active
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-transparent hover:bg-secondary')
+                }
+              >
+                {c.name}
+              </button>
+            )
+          })}
+          {cats.size > 0 && (
+            <button
+              onClick={() => setCats(new Set())}
+              className="rounded-full px-3 py-1 text-sm text-muted-foreground underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Grid */}
       {isLoading ? (

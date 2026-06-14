@@ -36,10 +36,9 @@ export default function Workbench() {
 
   const matches = useMemo(() => {
     const q = memberSearch.trim().toLowerCase()
-    if (!q) return []
     return (members ?? [])
-      .filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(q))
-      .slice(0, 6)
+      .filter((m) => !q || `${m.name} ${m.email}`.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [members, memberSearch])
 
   const refresh = () => {
@@ -123,7 +122,7 @@ export default function Workbench() {
             />
           </div>
           {matches.length > 0 && (
-            <div className="mt-2 divide-y rounded-lg border bg-card">
+            <div className="mt-2 max-h-96 divide-y overflow-y-auto rounded-lg border bg-card">
               {matches.map((m) => (
                 <button
                   key={m.id}

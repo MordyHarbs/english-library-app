@@ -16,7 +16,7 @@ import {
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-type Step = 'email' | 'code' | 'password' | 'setPassword'
+type Step = 'email' | 'code' | 'password'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -31,7 +31,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
 
   // Already logged in and just landed here → bounce away.
-  if (session && step !== 'setPassword') {
+  if (session) {
     return null
   }
 
@@ -85,7 +85,7 @@ export default function Login() {
       })
       if (error) throw error
       toast.success('Logged in!')
-      setStep('setPassword') // offer (optional) password creation
+      redirectAfterLogin()
     } catch (err) {
       toast.error((err as Error).message)
     } finally {
@@ -112,31 +112,13 @@ export default function Login() {
     }
   }
 
-  async function savePassword() {
-    if (password.length < 8)
-      return toast.error('Password must be at least 8 characters')
-    setBusy(true)
-    try {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
-      toast.success('Password saved.')
-      redirectAfterLogin()
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <img src="/logo.png" alt="Ayalot Library" className="mx-auto mb-1 h-20 w-auto" />
           <CardDescription>
-            {step === 'setPassword'
-              ? 'Optionally set a password for next time'
-              : 'Logging in is optional — it just lets you track your books and requests'}
+            Logging in is optional — it just lets you track your books and requests
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -239,43 +221,14 @@ export default function Login() {
             </>
           )}
 
-          {/* Optional SET PASSWORD after code login */}
-          {step === 'setPassword' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="new-pw">New password (optional)</Label>
-                <Input
-                  id="new-pw"
-                  type="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                />
-              </div>
-              <Button className="w-full" onClick={savePassword} disabled={busy}>
-                Save password
-              </Button>
-              <button
-                type="button"
-                className="w-full text-sm text-muted-foreground underline"
-                onClick={redirectAfterLogin}
-              >
-                Skip — I'll keep using email codes
-              </button>
-            </>
-          )}
-
-          {step !== 'setPassword' && (
-            <div className="border-t pt-3 text-center">
-              <Link
-                to="/"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                Just browsing? Continue to the catalog →
-              </Link>
-            </div>
-          )}
+          <div className="border-t pt-3 text-center">
+            <Link
+              to="/"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              Just browsing? Continue to the catalog →
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

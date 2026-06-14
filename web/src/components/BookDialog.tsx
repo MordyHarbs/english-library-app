@@ -1,4 +1,4 @@
-import { BookOpen, Check, Plus } from 'lucide-react'
+import { BookOpen, Plus, X } from 'lucide-react'
 import { useBook, useAvailability } from '@/lib/queries'
 import { coverUrl } from '@/lib/covers'
 import { useCart } from '@/lib/cart'
@@ -75,7 +75,7 @@ export function BookDialog({
                 >
                   {inCart ? (
                     <>
-                      <Check className="size-4" /> Added to request
+                      <X className="size-4" /> Remove from request
                     </>
                   ) : (
                     <>

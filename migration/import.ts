@@ -13,7 +13,7 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
-import { readFileSync, existsSync, writeFileSync } from 'node:fs'
+import { readFileSync, existsSync, writeFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 process.loadEnvFile(join(import.meta.dirname, '.env'))
@@ -35,6 +35,17 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 })
+
+// Drive appends an extension on download (cover-1 -> cover-1.png), so map each
+// cover's base name to its actual filename.
+const coverByBase = new Map<string, string>()
+const coversDir = join(EXPORT_DIR, 'covers')
+if (existsSync(coversDir)) {
+  for (const f of readdirSync(coversDir)) {
+    coverByBase.set(f.replace(/\.[^.]+$/, ''), f)
+  }
+}
+const resolveCover = (base: string): string => (base ? coverByBase.get(base) ?? '' : '')
 
 const report: string[] = []
 const note = (line: string) => {
@@ -154,7 +165,7 @@ async function main() {
     const bookId = data!.id
     bookIdByNorm.set(norm(title), bookId)
 
-    const coverFile = clean(r['coverFile'])
+    const coverFile = resolveCover(clean(r['coverFile']))
     if (coverFile) {
       try {
         const buf = readFileSync(join(EXPORT_DIR, 'covers', coverFile))

@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import imageCompression from 'browser-image-compression'
-import { Plus, Pencil, BookOpen } from 'lucide-react'
+import { Plus, Pencil, BookOpen, Trash2 } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
+import { BookDialog } from '@/components/BookDialog'
 import { useBooks, useCategories, type CatalogBook } from '@/lib/queries'
 import { supabase } from '@/lib/supabase'
 import { coverUrl } from '@/lib/covers'
@@ -28,6 +29,22 @@ export default function Books() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  const [openBook, setOpenBook] = useState<string | null>(null)
+
+  async function deleteBook(id: string, title: string) {
+    if (!confirm(`Delete "${title}"? This can't be undone.`)) return
+    const { error } = await supabase.from('books').delete().eq('id', id)
+    if (error) {
+      toast.error(
+        /foreign key|violates/i.test(error.message)
+          ? "Can't delete — this book has loan or request history."
+          : error.message,
+      )
+      return
+    }
+    toast.success('Book deleted.')
+    qc.invalidateQueries({ queryKey: ['books'] })
+  }
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -128,31 +145,46 @@ export default function Books() {
             const cover = coverUrl(b.cover_path)
             return (
               <div key={b.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
-                <div className="h-16 w-11 shrink-0 overflow-hidden rounded bg-muted">
-                  {cover ? (
-                    <img src={cover} alt={b.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                      <BookOpen className="size-4 opacity-40" />
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{b.title}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {b.author}
-                    {b.categoryName ? ` · ${b.categoryName}` : ''}
-                  </p>
-                </div>
+                <button
+                  onClick={() => setOpenBook(b.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <div className="h-16 w-11 shrink-0 overflow-hidden rounded bg-muted">
+                    {cover ? (
+                      <img src={cover} alt={b.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <BookOpen className="size-4 opacity-40" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium hover:underline">{b.title}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {b.author}
+                      {b.categoryName ? ` · ${b.categoryName}` : ''}
+                    </p>
+                  </div>
+                </button>
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="Edit"
                   onClick={() => {
                     setDraft({ ...b })
                     setCoverFile(null)
                   }}
                 >
                   <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Delete"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteBook(b.id, b.title)}
+                >
+                  <Trash2 className="size-4" />
                 </Button>
               </div>
             )
@@ -239,6 +271,8 @@ export default function Books() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BookDialog bookId={openBook} onClose={() => setOpenBook(null)} allowAdd={false} />
     </AdminShell>
   )
 }

@@ -18,6 +18,7 @@ const AdminReservationDetail = lazy(() => import('@/pages/admin/ReservationDetai
 const AdminWorkbench = lazy(() => import('@/pages/admin/Workbench'))
 const AdminBooks = lazy(() => import('@/pages/admin/Books'))
 const AdminMembers = lazy(() => import('@/pages/admin/Members'))
+const AdminMemberDetail = lazy(() => import('@/pages/admin/MemberDetail'))
 const AdminLoans = lazy(() => import('@/pages/admin/Loans'))
 const AdminHistory = lazy(() => import('@/pages/admin/History'))
 const AdminSettings = lazy(() => import('@/pages/admin/Settings'))
@@ -64,6 +65,7 @@ export default function App() {
       <Route path="/admin/workbench" element={<RequireAdmin><AdminWorkbench /></RequireAdmin>} />
       <Route path="/admin/books" element={<RequireAdmin><AdminBooks /></RequireAdmin>} />
       <Route path="/admin/members" element={<RequireAdmin><AdminMembers /></RequireAdmin>} />
+      <Route path="/admin/members/:id" element={<RequireAdmin><AdminMemberDetail /></RequireAdmin>} />
       <Route path="/admin/loans" element={<RequireAdmin><AdminLoans /></RequireAdmin>} />
       <Route path="/admin/history" element={<RequireAdmin><AdminHistory /></RequireAdmin>} />
       <Route path="/admin/settings" element={<RequireAdmin><AdminSettings /></RequireAdmin>} />

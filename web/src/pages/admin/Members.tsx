@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil } from 'lucide-react'
@@ -22,6 +23,7 @@ type Draft = Partial<Member> & { id?: string }
 export default function Members() {
   const { data: members, isLoading } = useMembers()
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [busy, setBusy] = useState(false)
@@ -102,8 +104,11 @@ export default function Members() {
               key={m.id}
               className="flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
             >
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">
+              <button
+                onClick={() => navigate(`/admin/members/${m.id}`)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="font-medium hover:underline">
                   {m.name}
                   {m.is_admin && (
                     <span className="ml-2 rounded bg-accent/15 px-1.5 py-0.5 text-xs font-medium text-accent">
@@ -115,7 +120,7 @@ export default function Members() {
                   {m.email}
                   {m.phone ? ` · ${m.phone}` : ''}
                 </p>
-              </div>
+              </button>
               {!m.paid && (
                 <span className="rounded bg-warning/15 px-1.5 py-0.5 text-xs font-medium text-warning">
                   unpaid
