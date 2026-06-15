@@ -151,7 +151,7 @@ export default function Members() {
                 <Pencil className="size-4" />
               </Button>
               <Button variant="destructive" size="sm" disabled={busy} onClick={() => deleteMember(m)}>
-                <Trash2 className="size-4" />
+                <Trash2 className="size-4" /> Delete
               </Button>
             </div>
           ))}

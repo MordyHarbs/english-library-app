@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { callFunction } from '@/lib/functions'
@@ -32,7 +32,7 @@ export default function Login() {
 
   // Already logged in and just landed here → bounce away.
   if (session) {
-    return null
+    return <Navigate to={from ?? (isAdmin ? '/admin' : '/account/books')} replace />
   }
 
   const redirectAfterLogin = () => {
