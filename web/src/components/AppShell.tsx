@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingBag, UserRound, LayoutDashboard } from 'lucide-react'
 import { useCart } from '@/lib/cart'
 import { useAuth } from '@/lib/auth'
+import { ScrollToTopButton } from './ScrollToTopButton'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { count } = useCart()
@@ -66,6 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
         Ayalot Library
       </footer>
+      <ScrollToTopButton />
     </div>
   )
 }

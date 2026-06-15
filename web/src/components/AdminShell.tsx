@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+import { ScrollToTopButton } from './ScrollToTopButton'
 
 const nav = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -103,6 +104,7 @@ export function AdminShell({
         </div>
         {children}
       </main>
+      <ScrollToTopButton />
     </div>
   )
 }
