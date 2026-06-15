@@ -340,22 +340,25 @@ export default function MemberDetail() {
             ) : (
               <div className="overflow-hidden rounded-lg border bg-card">
                 {open.map((l) => (
-                  <div key={l.id} className="flex items-center gap-3 border-b px-4 py-2.5 last:border-b-0">
-                    <span className="min-w-0 flex-1 truncate font-medium">{l.title}</span>
+                  <div
+                    key={l.id}
+                    className="grid gap-2 border-b px-4 py-2.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_90px_120px_88px_88px_88px] sm:items-center sm:gap-3"
+                  >
+                    <span className="min-w-0 truncate font-medium">{l.title}</span>
                     <StatusBadge status={isOverdue(l.due_date, null) ? 'overdue' : 'on_loan'} />
-                    <span className="hidden text-xs text-muted-foreground sm:inline">
+                    <span className="text-xs text-muted-foreground sm:text-center">
                       {fmtDate(l.due_date)}
                     </span>
-                    <Button size="sm" variant="outline" disabled={busy} onClick={() => {
+                    <Button size="sm" variant="outline" className="w-full" disabled={busy} onClick={() => {
                       setExtendLoan(l)
                       setNewDue(l.due_date)
                     }}>
                       Extend
                     </Button>
-                    <Button size="sm" variant="outline" disabled={busy} onClick={() => returnLoan(l.id)}>
+                    <Button size="sm" variant="outline" className="w-full" disabled={busy} onClick={() => returnLoan(l.id)}>
                       Return
                     </Button>
-                    <Button size="sm" variant="destructive" disabled={busy} onClick={() => deleteLoan(l)}>
+                    <Button size="sm" variant="destructive" className="w-full" disabled={busy} onClick={() => deleteLoan(l)}>
                       Delete
                     </Button>
                   </div>
@@ -374,12 +377,15 @@ export default function MemberDetail() {
             ) : (
               <div className="overflow-hidden rounded-lg border bg-card">
                 {history.map((l) => (
-                  <div key={l.id} className="flex items-center justify-between gap-3 border-b px-4 py-2.5 last:border-b-0">
+                  <div
+                    key={l.id}
+                    className="grid gap-2 border-b px-4 py-2.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_220px_88px] sm:items-center sm:gap-3"
+                  >
                     <span className="min-w-0 truncate">{l.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground sm:text-center">
                       {fmtDate(l.date_given)} → {fmtDate(l.date_returned)}
                     </span>
-                    <Button size="sm" variant="destructive" disabled={busy} onClick={() => deleteLoan(l)}>
+                    <Button size="sm" variant="destructive" className="w-full" disabled={busy} onClick={() => deleteLoan(l)}>
                       Delete
                     </Button>
                   </div>
