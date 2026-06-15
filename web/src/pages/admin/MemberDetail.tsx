@@ -191,6 +191,7 @@ export default function MemberDetail() {
           is_admin: !!draft.is_admin,
           comments: draft.comments?.trim() || null,
           fees_owed: Number(draft.fees_owed ?? 0),
+          has_password: !!draft.has_password,
         })
         .eq('id', draft.id)
       if (error) throw error
@@ -261,6 +262,7 @@ export default function MemberDetail() {
           <Field label="Phone" value={m.phone} className="sm:col-span-2" />
           <Field label="Address" value={m.address} />
           <Field label="Membership" value={m.paid ? 'Paid' : 'Not paid'} />
+          <Field label="Password login" value={m.has_password ? 'Enabled' : 'OTP only'} />
           <Field label="Fees owed" value={fees > 0 ? `₪${fees.toFixed(2)}` : 'None'} />
           <Field label="Member since" value={fmtDate(m.date_added)} />
           {m.comments && (
@@ -464,6 +466,15 @@ export default function MemberDetail() {
                     onChange={(e) => setDraft({ ...draft, is_admin: e.target.checked })}
                   />
                   Admin
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={!!draft.has_password}
+                    onChange={(e) => setDraft({ ...draft, has_password: e.target.checked })}
+                  />
+                  Password login
                 </label>
               </div>
             </div>

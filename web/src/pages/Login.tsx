@@ -39,14 +39,13 @@ export default function Login() {
     navigate(from ?? (isAdmin ? '/admin' : '/account/books'), { replace: true })
   }
 
-  // Step 1: check the email is a member, then offer password login. The code
-  // fallback stays available for members who have not set a password yet.
+  // Step 1: check the email is a member, then choose the right login method.
   async function continueEmail() {
     const e = email.trim().toLowerCase()
     if (!emailRe.test(e)) return toast.error('Enter a valid email address')
     setBusy(true)
     try {
-      const res = await callFunction<{ ok: boolean; reason?: string }>(
+      const res = await callFunction<{ ok: boolean; reason?: string; hasPassword?: boolean }>(
         'request-login-code',
         { email: e },
       )
@@ -61,7 +60,14 @@ export default function Login() {
         }
         return
       }
-      setStep('password')
+      setEmail(e)
+      setCode('')
+      setPassword('')
+      if (res.hasPassword) {
+        setStep('password')
+      } else {
+        await sendOtp(e)
+      }
     } catch (err) {
       toast.error((err as Error).message)
     } finally {
@@ -70,10 +76,9 @@ export default function Login() {
   }
 
   // Send the email code and move to the code step. (Membership already verified.)
-  async function sendOtp() {
-    const e = email.trim().toLowerCase()
+  async function sendOtp(targetEmail = email.trim().toLowerCase()) {
     const { error } = await supabase.auth.signInWithOtp({
-      email: e,
+      email: targetEmail,
       options: { shouldCreateUser: false },
     })
     if (error) throw error
@@ -123,6 +128,7 @@ export default function Login() {
         password,
       })
       if (error) throw error
+      await supabase.rpc('mark_password_set')
       redirectAfterLogin()
     } catch (err) {
       toast.error((err as Error).message)
@@ -183,6 +189,17 @@ export default function Login() {
               <Button className="w-full" onClick={verifyCode} disabled={busy}>
                 Verify & log in
               </Button>
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground underline"
+                onClick={() => {
+                  setPassword('')
+                  setStep('password')
+                }}
+                disabled={busy}
+              >
+                Use password instead
+              </button>
               <button
                 type="button"
                 className="w-full text-sm text-muted-foreground underline"

@@ -18,11 +18,10 @@ Deno.serve(async (req) => {
 
     const db = serviceClient()
 
-    // Gate: must be an existing member.
+    // Gate: must be an existing member. Password login is offered only when the
+    // app explicitly recorded that this member saved a password.
     const { data: member, error } = await db
-      .from('members')
-      .select('id, has_password')
-      .eq('email', normalized)
+      .rpc('member_login_status', { p_email: normalized })
       .maybeSingle()
     if (error) throw error
     if (!member) {
