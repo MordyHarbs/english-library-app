@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
     try {
       await requireAdmin(req)
     } catch (resp) {
-      return resp instanceof Response ? resp : json({ error: 'Forbidden' }, 403)
+      const status = resp instanceof Response ? resp.status : 403
+      return json({ error: status === 401 ? 'Unauthorized' : 'Forbidden' }, status)
     }
 
     const { reservation_ids } = (await req.json()) as { reservation_ids: string[] }

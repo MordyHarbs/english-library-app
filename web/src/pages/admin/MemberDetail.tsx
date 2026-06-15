@@ -136,6 +136,23 @@ export default function MemberDetail() {
     }
   }
 
+  async function deleteMember() {
+    if (!data?.member) return
+    if (!window.confirm(`Delete ${data.member.name}? This also removes their lending records and login. This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      await callFunction('delete-members', { member_ids: [data.member.id] })
+      toast.success('Member deleted.')
+      qc.invalidateQueries({ queryKey: ['admin'] })
+      qc.invalidateQueries({ queryKey: ['availability'] })
+      navigate('/admin/members')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function lend() {
     if (toLend.length === 0) return
     setBusy(true)
@@ -200,6 +217,9 @@ export default function MemberDetail() {
               <Field label="Comments" value={m.comments} />
             </div>
           )}
+          <Button variant="destructive" className="col-span-full" disabled={busy} onClick={deleteMember}>
+            Delete member
+          </Button>
         </div>
 
         <div className="space-y-6">

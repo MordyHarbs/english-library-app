@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { useMembers, type Member } from '@/lib/manage'
 import { supabase } from '@/lib/supabase'
@@ -36,6 +36,22 @@ export default function Members() {
   }, [members, search])
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['admin', 'members'] })
+
+  async function deleteMember(member: Member) {
+    if (!window.confirm(`Delete ${member.name}? This also removes their lending records and login. This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      await callFunction('delete-members', { member_ids: [member.id] })
+      toast.success('Member deleted.')
+      refresh()
+      qc.invalidateQueries({ queryKey: ['admin'] })
+      qc.invalidateQueries({ queryKey: ['availability'] })
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function save() {
     if (!draft?.name?.trim()) return toast.error('Name is required')
@@ -133,6 +149,9 @@ export default function Members() {
               )}
               <Button variant="ghost" size="sm" onClick={() => setDraft(m)}>
                 <Pencil className="size-4" />
+              </Button>
+              <Button variant="destructive" size="sm" disabled={busy} onClick={() => deleteMember(m)}>
+                <Trash2 className="size-4" />
               </Button>
             </div>
           ))}

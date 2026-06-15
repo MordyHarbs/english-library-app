@@ -385,6 +385,42 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+[functions.create-member]
+verify_jwt = false
+
+[functions.daily-reminders]
+verify_jwt = false
+
+[functions.delete-loans]
+verify_jwt = false
+
+[functions.delete-members]
+verify_jwt = false
+
+[functions.delete-reservations]
+verify_jwt = false
+
+[functions.extend-books]
+verify_jwt = false
+
+[functions.finalize-reservation]
+verify_jwt = false
+
+[functions.lend-books]
+verify_jwt = false
+
+[functions.member-request]
+verify_jwt = false
+
+[functions.request-login-code]
+verify_jwt = false
+
+[functions.return-books]
+verify_jwt = false
+
+[functions.submit-reservation]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
