@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { addDays, format } from 'date-fns'
-import { ArrowLeft, Search, Plus, X } from 'lucide-react'
+import { ArrowLeft, Search, Plus, X, Pencil } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { StatusBadge } from '@/components/StatusBadge'
 import { supabase } from '@/lib/supabase'
@@ -12,6 +12,7 @@ import { useBooks } from '@/lib/queries'
 import { fmtDate, isOverdue } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,9 @@ interface MemberLoan {
   date_returned: string | null
   title: string
 }
+
+type Member = NonNullable<Awaited<ReturnType<typeof useMemberDetail>>['data']>['member']
+type Draft = Partial<Member> & { id: string }
 
 function useMemberDetail(id: string | undefined) {
   return useQuery({
@@ -56,11 +60,28 @@ function useMemberDetail(id: string | undefined) {
   })
 }
 
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
+function Field({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string | null | undefined
+  className?: string
+}) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0 ${className}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-0.5 break-words text-sm">{value || '—'}</p>
+    </div>
+  )
+}
+
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
     </div>
   )
 }
@@ -77,6 +98,7 @@ export default function MemberDetail() {
   const [toLend, setToLend] = useState<{ id: string; title: string }[]>([])
   const [extendLoan, setExtendLoan] = useState<MemberLoan | null>(null)
   const [newDue, setNewDue] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'))
+  const [draft, setDraft] = useState<Draft | null>(null)
 
   const bookMatches = useMemo(() => {
     const q = bookSearch.trim().toLowerCase()
@@ -153,6 +175,35 @@ export default function MemberDetail() {
     }
   }
 
+  async function saveMember() {
+    if (!draft?.name?.trim()) return toast.error('Name is required')
+    const email = draft.email?.trim().toLowerCase() || null
+    setBusy(true)
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({
+          name: draft.name,
+          email,
+          phone: draft.phone?.trim() || null,
+          address: draft.address?.trim() || null,
+          paid: !!draft.paid,
+          is_admin: !!draft.is_admin,
+          comments: draft.comments?.trim() || null,
+          fees_owed: Number(draft.fees_owed ?? 0),
+        })
+        .eq('id', draft.id)
+      if (error) throw error
+      toast.success('Member updated.')
+      setDraft(null)
+      qc.invalidateQueries({ queryKey: ['admin'] })
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function lend() {
     if (toLend.length === 0) return
     setBusy(true)
@@ -206,8 +257,8 @@ export default function MemberDetail() {
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
         {/* Profile */}
         <div className="grid grid-cols-1 gap-4 self-start rounded-lg border bg-card p-5 sm:grid-cols-2">
-          <Field label="Email" value={m.email} />
-          <Field label="Phone" value={m.phone} />
+          <Field label="Email" value={m.email} className="sm:col-span-2" />
+          <Field label="Phone" value={m.phone} className="sm:col-span-2" />
           <Field label="Address" value={m.address} />
           <Field label="Membership" value={m.paid ? 'Paid' : 'Not paid'} />
           <Field label="Fees owed" value={fees > 0 ? `₪${fees.toFixed(2)}` : 'None'} />
@@ -217,6 +268,9 @@ export default function MemberDetail() {
               <Field label="Comments" value={m.comments} />
             </div>
           )}
+          <Button variant="outline" className="col-span-full" disabled={busy} onClick={() => setDraft(m)}>
+            <Pencil className="size-4" /> Edit member
+          </Button>
           <Button variant="destructive" className="col-span-full" disabled={busy} onClick={deleteMember}>
             Delete member
           </Button>
@@ -347,6 +401,79 @@ export default function MemberDetail() {
             </Button>
             <Button disabled={busy} onClick={extendLoanDueDate}>
               Extend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!draft} onOpenChange={(open) => !open && setDraft(null)}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit member</DialogTitle>
+          </DialogHeader>
+          {draft && (
+            <div className="space-y-3">
+              <EditField label="Name">
+                <Input value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              </EditField>
+              <EditField label="Email (optional)">
+                <Input
+                  type="email"
+                  value={draft.email ?? ''}
+                  onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                />
+              </EditField>
+              <div className="grid grid-cols-2 gap-3">
+                <EditField label="Phone">
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={draft.phone ?? ''}
+                    onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+                  />
+                </EditField>
+                <EditField label="Fees owed (₪)">
+                  <Input
+                    type="number"
+                    value={String(draft.fees_owed ?? 0)}
+                    onChange={(e) => setDraft({ ...draft, fees_owed: Number(e.target.value) })}
+                  />
+                </EditField>
+              </div>
+              <EditField label="Address">
+                <Input value={draft.address ?? ''} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
+              </EditField>
+              <EditField label="Comments">
+                <Input value={draft.comments ?? ''} onChange={(e) => setDraft({ ...draft, comments: e.target.value })} />
+              </EditField>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={!!draft.paid}
+                    onChange={(e) => setDraft({ ...draft, paid: e.target.checked })}
+                  />
+                  Membership paid
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={!!draft.is_admin}
+                    onChange={(e) => setDraft({ ...draft, is_admin: e.target.checked })}
+                  />
+                  Admin
+                </label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDraft(null)}>
+              Cancel
+            </Button>
+            <Button disabled={busy} onClick={saveMember}>
+              {busy ? 'Saving…' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>

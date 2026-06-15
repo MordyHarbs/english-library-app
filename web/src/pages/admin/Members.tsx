@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { useMembers, type Member } from '@/lib/manage'
-import { supabase } from '@/lib/supabase'
 import { callFunction } from '@/lib/functions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,61 +30,26 @@ export default function Members() {
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (members ?? []).filter(
-      (m) => !q || `${m.name} ${m.email} ${m.phone ?? ''}`.toLowerCase().includes(q),
+      (m) => !q || `${m.name} ${m.email ?? ''} ${m.phone ?? ''}`.toLowerCase().includes(q),
     )
   }, [members, search])
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['admin', 'members'] })
 
-  async function deleteMember(member: Member) {
-    if (!window.confirm(`Delete ${member.name}? This also removes their lending records and login. This cannot be undone.`)) return
-    setBusy(true)
-    try {
-      await callFunction('delete-members', { member_ids: [member.id] })
-      toast.success('Member deleted.')
-      refresh()
-      qc.invalidateQueries({ queryKey: ['admin'] })
-      qc.invalidateQueries({ queryKey: ['availability'] })
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function save() {
     if (!draft?.name?.trim()) return toast.error('Name is required')
-    if (!draft.email?.trim()) return toast.error('Email is required')
     setBusy(true)
     try {
-      if (draft.id) {
-        const { error } = await supabase
-          .from('members')
-          .update({
-            name: draft.name,
-            email: draft.email.toLowerCase(),
-            phone: draft.phone || null,
-            address: draft.address || null,
-            paid: !!draft.paid,
-            is_admin: !!draft.is_admin,
-            comments: draft.comments || null,
-            fees_owed: Number(draft.fees_owed ?? 0),
-          })
-          .eq('id', draft.id)
-        if (error) throw error
-        toast.success('Member updated.')
-      } else {
-        await callFunction('create-member', {
-          name: draft.name,
-          email: draft.email,
-          phone: draft.phone,
-          address: draft.address,
-          paid: !!draft.paid,
-          is_admin: !!draft.is_admin,
-          comments: draft.comments,
-        })
-        toast.success('Member added — welcome email sent.')
-      }
+      await callFunction('create-member', {
+        name: draft.name,
+        email: draft.email?.trim() || null,
+        phone: draft.phone?.trim() || null,
+        address: draft.address,
+        paid: !!draft.paid,
+        is_admin: !!draft.is_admin,
+        comments: draft.comments,
+      })
+      toast.success(draft.email?.trim() ? 'Member added — welcome email sent.' : 'Member added.')
       setDraft(null)
       refresh()
     } catch (e) {
@@ -133,7 +97,7 @@ export default function Members() {
                   )}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {m.email}
+                  {m.email || 'No email'}
                   {m.phone ? ` · ${m.phone}` : ''}
                 </p>
               </button>
@@ -147,12 +111,6 @@ export default function Members() {
                   ₪{Number(m.fees_owed).toFixed(2)}
                 </span>
               )}
-              <Button variant="ghost" size="sm" onClick={() => setDraft(m)}>
-                <Pencil className="size-4" />
-              </Button>
-              <Button variant="destructive" size="sm" disabled={busy} onClick={() => deleteMember(m)}>
-                <Trash2 className="size-4" /> Delete
-              </Button>
             </div>
           ))}
         </div>
@@ -161,14 +119,14 @@ export default function Members() {
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{draft?.id ? 'Edit member' : 'Add member'}</DialogTitle>
+            <DialogTitle>Add member</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="space-y-3">
               <Field label="Name">
                 <Input value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
               </Field>
-              <Field label="Email">
+              <Field label="Email (optional)">
                 <Input
                   type="email"
                   value={draft.email ?? ''}
@@ -177,7 +135,12 @@ export default function Members() {
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Phone">
-                  <Input value={draft.phone ?? ''} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    value={draft.phone ?? ''}
+                    onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+                  />
                 </Field>
                 <Field label="Fees owed (₪)">
                   <Input

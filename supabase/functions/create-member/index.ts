@@ -1,5 +1,5 @@
-// create-member (TECH-PLAN D3) — admin adds a member and sends a welcome email.
-// Also used to resend the welcome (pass resend:true with an existing member id).
+// create-member (TECH-PLAN D3) — admin adds a member and sends a welcome email
+// when an email address is provided.
 import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
@@ -24,10 +24,8 @@ Deno.serve(async (req) => {
       is_admin?: boolean
     }
     const name = String(body.name ?? '').trim()
-    const email = String(body.email ?? '').trim().toLowerCase()
+    const email = String(body.email ?? '').trim().toLowerCase() || null
     if (!name) return json({ error: 'Name is required' }, 400)
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      return json({ error: 'A valid email is required' }, 400)
 
     const db = serviceClient()
     const { data, error } = await db
@@ -49,9 +47,11 @@ Deno.serve(async (req) => {
       throw error
     }
 
-    await sendWelcome(db, name, email).catch((e) =>
-      console.error('welcome email failed:', e.message),
-    )
+    if (email) {
+      await sendWelcome(db, name, email).catch((e) =>
+        console.error('welcome email failed:', e.message),
+      )
+    }
 
     return json({ member_id: data.id })
   } catch (e) {

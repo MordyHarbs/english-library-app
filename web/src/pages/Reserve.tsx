@@ -33,7 +33,7 @@ export default function Reserve() {
   useEffect(() => {
     if (member) {
       setName((n) => n || member.name)
-      setEmail((e) => e || member.email)
+      setEmail((e) => e || member.email || '')
     }
   }, [member])
 

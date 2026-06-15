@@ -217,7 +217,7 @@ export type Database = {
           auth_user_id: string | null
           comments: string | null
           date_added: string
-          email: string
+          email: string | null
           fees_owed: number
           has_password: boolean
           id: string
@@ -231,7 +231,7 @@ export type Database = {
           auth_user_id?: string | null
           comments?: string | null
           date_added?: string
-          email: string
+          email?: string | null
           fees_owed?: number
           has_password?: boolean
           id?: string
@@ -245,7 +245,7 @@ export type Database = {
           auth_user_id?: string | null
           comments?: string | null
           date_added?: string
-          email?: string
+          email?: string | null
           fees_owed?: number
           has_password?: boolean
           id?: string
