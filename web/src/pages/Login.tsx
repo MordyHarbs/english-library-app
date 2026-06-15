@@ -52,7 +52,7 @@ export default function Login() {
       if (!res.ok) {
         if (res.reason === 'not_member') {
           toast.error(
-            'That email is not on the member list. Please ask the library to add you as a member.',
+            'That email is not on the member list yet. You can still send a book request; the library will add you as a member and email you when your account is ready.',
             { duration: 7000 },
           )
         } else {

@@ -42,6 +42,40 @@ export default function Reserve() {
   const overSoft = count > defaultLimit
   const blocked = count > maxLimit
 
+  function goToRequestStatus() {
+    if (member) {
+      navigate('/account/requests')
+      return
+    }
+    if (session) {
+      toast.warning(
+        done
+          ? 'Your request was sent. You can track it after the library adds you as a member and emails you.'
+          : 'This login is not linked to a member yet. If you already sent a request, wait for the library email that you were added as a member.',
+        { duration: 8000 },
+      )
+      return
+    }
+    toast.warning('Please sign in to see your request status.', { duration: 5000 })
+    navigate('/login', { state: { from: '/account/requests' } })
+  }
+
+  function RequestStatusPrompt({ sent = false }: { sent?: boolean }) {
+    return (
+      <div className="rounded-lg border bg-card p-4 text-sm">
+        <p className="font-medium">Looking for your request status?</p>
+        <p className="mt-1 text-muted-foreground">
+          {sent
+            ? 'After the library adds you as a member, you can track this request in your account.'
+            : 'Members can see request updates in My account.'}
+        </p>
+        <Button variant="outline" className="mt-3" onClick={goToRequestStatus}>
+          Check request status
+        </Button>
+      </div>
+    )
+  }
+
   async function submit() {
     if (!name.trim()) return toast.error('Please enter your name')
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
@@ -80,10 +114,15 @@ export default function Reserve() {
           </p>
           <div className="mt-6 flex flex-col items-center gap-3">
             <Button onClick={() => navigate('/')}>Back to catalog</Button>
+            <RequestStatusPrompt sent />
             {!session && (
               <p className="text-sm text-muted-foreground">
                 Want to track this request and your books?{' '}
-                <Link to="/login" className="font-medium text-foreground underline">
+                <Link
+                  to="/login"
+                  state={{ from: '/account/requests' }}
+                  className="font-medium text-foreground underline"
+                >
                   Log in with your email
                 </Link>{' '}
                 — totally optional.
@@ -107,6 +146,9 @@ export default function Reserve() {
           <Button className="mt-6" onClick={() => navigate('/')}>
             Browse the catalog
           </Button>
+          <div className="mt-6">
+            <RequestStatusPrompt />
+          </div>
         </div>
       </AppShell>
     )
@@ -115,6 +157,9 @@ export default function Reserve() {
   return (
     <AppShell>
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">Your request</h1>
+      <div className="mb-6">
+        <RequestStatusPrompt />
+      </div>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         {/* Book list */}
