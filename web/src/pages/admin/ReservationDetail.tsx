@@ -8,8 +8,11 @@ import { BookThumb } from '@/components/BookThumb'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useReservationDetail, type DetailItem, type ItemStatus } from '@/lib/admin'
 import { callFunction } from '@/lib/functions'
+import { supabase } from '@/lib/supabase'
 import { fmtDate } from '@/lib/format'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -20,9 +23,19 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+interface MemberDraft {
+  name: string
+  email: string
+  phone: string
+  address: string
+  paid: boolean
+  comments: string
+}
 
 type Decision = 'pending' | 'approved' | 'rejected' | 'lend'
 
@@ -41,6 +54,7 @@ export default function ReservationDetail() {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [detailBook, setDetailBook] = useState<DetailItem | null>(null)
+  const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null)
 
   // Initialise decisions from current item statuses.
   useEffect(() => {
@@ -112,6 +126,64 @@ export default function ReservationDetail() {
       qc.invalidateQueries({ queryKey: ['admin'] })
       qc.invalidateQueries({ queryKey: ['myReservations'] })
       navigate('/admin/reservations')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function openMemberDraft() {
+    if (!r) return
+    setMemberDraft({
+      name: r.name,
+      email: r.email,
+      phone: r.phone ?? '',
+      address: r.address ?? '',
+      paid: false,
+      comments: r.comments ? `From reservation: ${r.comments}` : '',
+    })
+  }
+
+  async function createMemberFromReservation() {
+    if (!r || !memberDraft) return
+    if (!memberDraft.name.trim()) return toast.error('Name is required')
+    setBusy(true)
+    try {
+      const email = memberDraft.email.trim().toLowerCase() || null
+      let memberId: string | null = null
+
+      if (email) {
+        const { data: existing, error: existingError } = await supabase
+          .from('members')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle()
+        if (existingError) throw existingError
+        memberId = existing?.id ?? null
+      }
+
+      if (!memberId) {
+        const created = await callFunction<{ member_id: string }>('create-member', {
+          name: memberDraft.name.trim(),
+          email,
+          phone: memberDraft.phone.trim() || null,
+          address: memberDraft.address.trim() || null,
+          paid: memberDraft.paid,
+          comments: memberDraft.comments.trim() || null,
+        })
+        memberId = created.member_id
+      }
+
+      const { error } = await supabase
+        .from('reservations')
+        .update({ member_id: memberId })
+        .eq('id', r.id)
+      if (error) throw error
+
+      toast.success('Member added and linked to this reservation.')
+      setMemberDraft(null)
+      qc.invalidateQueries({ queryKey: ['admin'] })
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
@@ -198,6 +270,11 @@ export default function ReservationDetail() {
                 Address: {r.address || '—'}
               </div>
             )}
+            {!r.member_id && (
+              <Button className="mt-3 w-full" variant="outline" disabled={busy} onClick={openMemberDraft}>
+                Add member from request
+              </Button>
+            )}
             <dl className="mt-3 space-y-1 text-xs text-muted-foreground">
               <div>Requested {fmtDate(r.created_at)}</div>
               {r.pickup_time && <div>Pickup: {r.pickup_time}</div>}
@@ -258,6 +335,65 @@ export default function ReservationDetail() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!memberDraft} onOpenChange={(open) => !open && setMemberDraft(null)}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add member from request</DialogTitle>
+          </DialogHeader>
+          {memberDraft && (
+            <div className="space-y-3">
+              <Field label="Name">
+                <Input value={memberDraft.name} onChange={(e) => setMemberDraft({ ...memberDraft, name: e.target.value })} />
+              </Field>
+              <Field label="Email (optional)">
+                <Input
+                  type="email"
+                  value={memberDraft.email}
+                  onChange={(e) => setMemberDraft({ ...memberDraft, email: e.target.value })}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Phone">
+                  <Input value={memberDraft.phone} onChange={(e) => setMemberDraft({ ...memberDraft, phone: e.target.value })} />
+                </Field>
+                <Field label="Membership">
+                  <label className="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={memberDraft.paid}
+                      onChange={(e) => setMemberDraft({ ...memberDraft, paid: e.target.checked })}
+                    />
+                    Paid
+                  </label>
+                </Field>
+              </div>
+              <Field label="Address">
+                <Input value={memberDraft.address} onChange={(e) => setMemberDraft({ ...memberDraft, address: e.target.value })} />
+              </Field>
+              <Field label="Comments">
+                <Input value={memberDraft.comments} onChange={(e) => setMemberDraft({ ...memberDraft, comments: e.target.value })} />
+              </Field>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMemberDraft(null)}>Cancel</Button>
+            <Button disabled={busy} onClick={createMemberFromReservation}>
+              {busy ? 'Adding…' : 'Add member'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
+    </div>
   )
 }

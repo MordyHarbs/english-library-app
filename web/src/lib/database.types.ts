@@ -49,6 +49,7 @@ export type Database = {
           description: string | null
           id: string
           pages: number | null
+          serial_number: number
           title: string
         }
         Insert: {
@@ -60,6 +61,7 @@ export type Database = {
           description?: string | null
           id?: string
           pages?: number | null
+          serial_number?: number
           title: string
         }
         Update: {
@@ -71,6 +73,7 @@ export type Database = {
           description?: string | null
           id?: string
           pages?: number | null
+          serial_number?: number
           title?: string
         }
         Relationships: [

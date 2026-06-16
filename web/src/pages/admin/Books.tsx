@@ -14,6 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -22,6 +29,8 @@ import {
 } from '@/components/ui/dialog'
 
 type Draft = Partial<CatalogBook> & { id?: string; categoryName?: string | null }
+const NEW_CATEGORY = '__new__'
+const NO_CATEGORY = '__none__'
 
 export default function Books() {
   const { data: books, isLoading } = useBooks()
@@ -38,6 +47,11 @@ export default function Books() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [openBook, setOpenBook] = useState<string | null>(null)
+
+  const nextSerialNumber = useMemo(() => {
+    const max = Math.max(0, ...(books ?? []).map((b) => Number(b.serial_number ?? 0)))
+    return max + 1
+  }, [books])
 
   async function deleteBook(id: string, title: string) {
     if (!confirm(`Delete "${title}"? This can't be undone.`)) return
@@ -97,15 +111,19 @@ export default function Books() {
 
   async function save() {
     if (!draft?.title?.trim()) return toast.error('Title is required')
+    if (!draft.serial_number || Number(draft.serial_number) < 1) {
+      return toast.error('Serial number is required')
+    }
     setBusy(true)
     try {
-      const category_id = await resolveCategory(draft.categoryName)
+      const category_id = draft.category_id ?? await resolveCategory(draft.categoryName)
       const payload = {
         title: draft.title.trim(),
         author: draft.author || null,
         category_id,
         description: draft.description || null,
         pages: draft.pages ? Number(draft.pages) : null,
+        serial_number: Number(draft.serial_number),
         comments: draft.comments || null,
       }
       let bookId = draft.id
@@ -133,7 +151,7 @@ export default function Books() {
     <AdminShell
       title="Books"
       actions={
-        <Button onClick={() => setDraft({})}>
+        <Button onClick={() => setDraft({ serial_number: nextSerialNumber })}>
           <Plus className="size-4" /> Add book
         </Button>
       }
@@ -169,7 +187,8 @@ export default function Books() {
                   <div className="min-w-0">
                     <p className="truncate font-medium hover:underline">{b.title}</p>
                     <p className="truncate text-sm text-muted-foreground">
-                      {b.author}
+                      #{b.serial_number}
+                      {b.author ? ` · ${b.author}` : ''}
                       {b.categoryName ? ` · ${b.categoryName}` : ''}
                     </p>
                   </div>
@@ -239,6 +258,16 @@ export default function Books() {
                 <Field label="Author">
                   <Input value={draft.author ?? ''} onChange={(e) => setDraft({ ...draft, author: e.target.value })} />
                 </Field>
+                <Field label="Serial number">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.serial_number ? String(draft.serial_number) : ''}
+                    onChange={(e) => setDraft({ ...draft, serial_number: Number(e.target.value) })}
+                  />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="Pages">
                   <Input
                     type="number"
@@ -246,18 +275,37 @@ export default function Books() {
                     onChange={(e) => setDraft({ ...draft, pages: Number(e.target.value) })}
                   />
                 </Field>
+                <Field label="Category">
+                  <Select
+                    value={draft.category_id ?? (draft.categoryName ? NEW_CATEGORY : NO_CATEGORY)}
+                    onValueChange={(value) => {
+                      if (value === NO_CATEGORY) setDraft({ ...draft, category_id: null, categoryName: null })
+                      else if (value === NEW_CATEGORY) setDraft({ ...draft, category_id: null, categoryName: '' })
+                      else setDraft({ ...draft, category_id: value, categoryName: null })
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_CATEGORY}>No category</SelectItem>
+                      {categories?.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                      <SelectItem value={NEW_CATEGORY}>Add new category…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
-              <Field label="Category">
-                <Input
-                  list="cat-list"
-                  value={draft.categoryName ?? ''}
-                  onChange={(e) => setDraft({ ...draft, categoryName: e.target.value })}
-                  placeholder="Type or pick a category"
-                />
-                <datalist id="cat-list">
-                  {categories?.map((c) => <option key={c.id} value={c.name} />)}
-                </datalist>
-              </Field>
+              {draft.categoryName !== null && draft.categoryName !== undefined && !draft.category_id && (
+                <Field label="New category name">
+                  <Input
+                    value={draft.categoryName ?? ''}
+                    onChange={(e) => setDraft({ ...draft, categoryName: e.target.value })}
+                    placeholder="Category name"
+                  />
+                </Field>
+              )}
               <Field label="Description">
                 <textarea
                   rows={3}

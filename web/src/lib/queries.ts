@@ -10,6 +10,7 @@ export interface CatalogBook {
   author: string | null
   description: string | null
   pages: number | null
+  serial_number: number
   cover_path: string | null
   category_id: string | null
   categoryName: string | null
@@ -44,7 +45,7 @@ export function useBooks() {
       const { data, error } = await supabase
         .from('books')
         .select(
-          'id, title, author, description, pages, cover_path, category_id, comments, date_added, categories(name)',
+          'id, title, author, description, pages, serial_number, cover_path, category_id, comments, date_added, categories(name)',
         )
         .order('title', { ascending: true })
       if (error) throw error
@@ -54,6 +55,7 @@ export function useBooks() {
         author: b.author,
         description: b.description,
         pages: b.pages,
+        serial_number: b.serial_number,
         cover_path: b.cover_path,
         category_id: b.category_id,
         categoryName: (b.categories as { name: string } | null)?.name ?? null,
@@ -72,7 +74,7 @@ export function useBook(id: string | undefined) {
       const { data, error } = await supabase
         .from('books')
         .select(
-          'id, title, author, description, pages, cover_path, category_id, comments, date_added, categories(name)',
+          'id, title, author, description, pages, serial_number, cover_path, category_id, comments, date_added, categories(name)',
         )
         .eq('id', id!)
         .maybeSingle()
@@ -84,6 +86,7 @@ export function useBook(id: string | undefined) {
         author: data.author,
         description: data.description,
         pages: data.pages,
+        serial_number: data.serial_number,
         cover_path: data.cover_path,
         category_id: data.category_id,
         categoryName: (data.categories as { name: string } | null)?.name ?? null,
