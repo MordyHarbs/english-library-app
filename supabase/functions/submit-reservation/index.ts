@@ -17,7 +17,9 @@ interface Body {
 }
 
 const esc = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+const cleanText = (s: string) => s.replace(/[\r\n]+/g, ' ').trim()
 
 Deno.serve(async (req) => {
   const pf = preflight(req)
@@ -127,7 +129,7 @@ async function sendEmails(
   // Book titles + availability for the email.
   const { data: books } = await db
     .from('books')
-    .select('id, title, author')
+    .select('id, title, author, cover_path')
     .in('id', ctx.bookIds)
   const { data: avail } = await db
     .from('book_availability')
@@ -146,30 +148,52 @@ async function sendEmails(
     })
     .join('')
 
-  const deepLink = `${siteUrl}/admin/reservations/${reservationId}`
+  let bookCards = `<div style="text-align: center; margin: 20px 0;">`
+  for (const book of books ?? []) {
+    const a = availMap.get(book.id)
+    const out = a && !a.is_available
+    const cover = coverUrl(db, book.cover_path)
+    bookCards += `<div style="margin: 16px 8px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; display: inline-block; width: 200px; height: 320px; vertical-align: top; text-align: center; overflow: hidden; background-color: #fafafa;">`
+    bookCards += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">`
+    bookCards += `<tr><td height="52" align="center" valign="middle" style="height: 52px; vertical-align: middle; text-align: center; font-weight: bold; font-size: 14px; line-height: 1.3; color: #222;">${esc(book.title)}</td></tr>`
+    bookCards += `</table>`
+    if (cover) {
+      bookCards += `<img src="${cover}" alt="${esc(book.title)}" style="max-height: 230px; max-width: 180px; width: auto; height: auto; border-radius: 4px; object-fit: contain;" />`
+    }
+    if (out) {
+      const ret = a?.expected_return ? ` (expected ${a.expected_return})` : ''
+      bookCards += `<div style="margin-top: 8px; font-size: 12px; color: #92400e; background: #fef3c7; padding: 3px 8px; border-radius: 6px; font-weight: 600;">⚠ Not available${esc(ret)}</div>`
+    }
+    bookCards += `</div>`
+  }
+  bookCards += `</div>`
 
   // --- Admin alert ---
   const adminHtml = `
-    <p>New book request from <b>${esc(ctx.name)}</b> (${esc(ctx.email)}).</p>
+    <p>New book hold request received from the website:</p>
+    <table style="border-collapse: collapse; margin-bottom: 16px;">
+      <tr><td style="padding: 4px 8px;"><b>From:</b></td><td>${esc(ctx.name)}</td></tr>
+      <tr><td style="padding: 4px 8px;"><b>Email:</b></td><td><a href="mailto:${esc(ctx.email)}">${esc(ctx.email)}</a></td></tr>
+      <tr><td style="padding: 4px 8px;"><b>Expected pickup:</b></td><td>${esc(ctx.body.pickup_time || 'Not specified')}</td></tr>
+    </table>
     ${
       ctx.isMember
-        ? '<p>Member status: <b>existing member</b></p>'
-        : `<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;border-radius:6px">
-             <b>⚠ New / non-member</b><br>Phone: ${esc(ctx.body.phone || 'Not provided')}<br>Address: ${esc(ctx.body.address || 'Not provided')}
+        ? ''
+        : `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+             <b>⚠ NEW / NON-MEMBER</b> — email not found in member list<br>
+             Phone: ${esc(ctx.body.phone || 'Not provided')}<br>
+             Address: ${esc(ctx.body.address || 'Not provided')}
            </div>`
     }
-    <p><b>Pickup:</b> ${esc(ctx.body.pickup_time || 'Not specified')}</p>
-    <p><b>Books requested:</b></p><ul>${bookList}</ul>
-    ${ctx.body.comments ? `<p><b>Notes:</b> ${esc(ctx.body.comments)}</p>` : ''}
-    <p style="margin-top:20px">
-      <a href="${deepLink}" style="background:#1f2937;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">
-        Open this request in the admin
-      </a>
-    </p>`
+    <p><b>Books requested (${ctx.bookIds.length}):</b></p>
+    ${bookCards}
+    ${ctx.body.comments ? `<p><b>Notes from requester:</b><br>${esc(ctx.body.comments)}</p>` : ''}
+    <hr style="border: none; border-top: 1px solid #ccc; margin-top: 24px;">
+    <p style="color: #888; font-size: 12px;">Reply directly to this email to confirm the hold with the requester.</p>`
   const adminOk = await sendEmail({
     to: adminEmail,
     replyTo: ctx.email,
-    subject: `Book request from ${ctx.name}${ctx.isMember ? '' : ' (new member)'}`,
+    subject: `Book Hold Request from ${cleanText(ctx.name)}${ctx.isMember ? '' : ' (NEW MEMBER)'}`,
     html: adminHtml,
   })
   if (adminOk)
@@ -197,4 +221,9 @@ async function sendEmails(
       recipient: ctx.email,
       reservation_id: reservationId,
     })
+}
+
+function coverUrl(db: ReturnType<typeof serviceClient>, path: string | null | undefined) {
+  if (!path) return ''
+  return db.storage.from('covers').getPublicUrl(path).data.publicUrl
 }

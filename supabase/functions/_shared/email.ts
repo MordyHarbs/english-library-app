@@ -7,6 +7,7 @@ import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 
 export interface EmailInput {
   to: string
+  bcc?: string
   subject: string
   html: string
   text?: string
@@ -31,6 +32,7 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
       await client.send({
         from: `Ayalot Library <${gmailUser}>`,
         to: input.to,
+        bcc: input.bcc,
         replyTo: input.replyTo,
         subject: input.subject,
         content: input.text ?? input.subject,
@@ -78,6 +80,7 @@ async function sendPlain(host: string, port: number, from: string, input: EmailI
     await cmd('EHLO ayalot.local')
     await cmd(`MAIL FROM:<${from}>`)
     await cmd(`RCPT TO:<${input.to}>`)
+    if (input.bcc) await cmd(`RCPT TO:<${input.bcc}>`)
     await cmd('DATA')
     const headers = [
       `From: Ayalot Library <${from}>`,
