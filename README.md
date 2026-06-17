@@ -1,5 +1,15 @@
 # English Library App
 
+## Start the production-data local server
+
+From the repo root, run:
+
+```bash
+npm run dev:prod --workspace web
+```
+
+Then open http://localhost:5173/.
+
 Full-stack replacement for the Google Sheet + Form + Apps Script library system.
 Public catalog, member portal, and a native admin dashboard.
 
