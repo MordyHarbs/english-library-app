@@ -5,6 +5,7 @@
 From the repo root, run:
 
 ```bash
+cd /Users/mordechai/Dev/english-library-app
 npm run dev:prod --workspace web
 ```
 
