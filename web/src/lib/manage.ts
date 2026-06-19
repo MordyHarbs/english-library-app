@@ -116,6 +116,7 @@ export function useMemberWorkbench(memberId: string | undefined) {
 }
 
 export type Setting = Database['public']['Tables']['settings']['Row']
+export type AppNotice = Database['public']['Tables']['app_notices']['Row']
 
 export function useSettings() {
   return useQuery({
@@ -128,6 +129,24 @@ export function useSettings() {
         .order('key', { ascending: true })
       if (error) throw error
       return data
+    },
+  })
+}
+
+export function useAppNotices() {
+  return useQuery({
+    queryKey: ['admin', 'appNotices'],
+    queryFn: async (): Promise<AppNotice[]> => {
+      const { data, error } = await supabase
+        .from('app_notices')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return (data ?? []).map((notice) => ({
+        ...notice,
+        dismissal_version: notice.dismissal_version ?? 1,
+      }))
     },
   })
 }

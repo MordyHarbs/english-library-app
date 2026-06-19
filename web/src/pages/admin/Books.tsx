@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import imageCompression from 'browser-image-compression'
-import { Plus, Pencil, BookOpen, Trash2 } from 'lucide-react'
+import { Plus, Pencil, BookOpen, Trash2, Link, ImageOff } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { BookDialog } from '@/components/BookDialog'
 import { useBooks, useCategories, type CatalogBook } from '@/lib/queries'
@@ -13,6 +13,7 @@ import { coverUrl } from '@/lib/covers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { callFunction } from '@/lib/functions'
 import {
   Select,
   SelectContent,
@@ -32,6 +33,19 @@ type Draft = Partial<CatalogBook> & { id?: string; categoryName?: string | null 
 const NEW_CATEGORY = '__new__'
 const NO_CATEGORY = '__none__'
 
+interface ImportedBookDetails {
+  title: string
+  author: string | null
+  description: string | null
+  pages: number | null
+  category: string | null
+  cover: {
+    filename: string
+    content_type: string
+    data_base64: string
+  } | null
+}
+
 export default function Books() {
   const { data: books, isLoading } = useBooks()
   const { data: categories } = useCategories()
@@ -45,6 +59,9 @@ export default function Books() {
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverRemoved, setCoverRemoved] = useState(false)
+  const [importUrl, setImportUrl] = useState('')
+  const [importBusy, setImportBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [openBook, setOpenBook] = useState<string | null>(null)
 
@@ -52,6 +69,17 @@ export default function Books() {
     const max = Math.max(0, ...(books ?? []).map((b) => Number(b.serial_number ?? 0)))
     return max + 1
   }, [books])
+  const coverPreview = useMemo(() => {
+    if (!draft || coverRemoved) return null
+    if (coverFile) return URL.createObjectURL(coverFile)
+    return coverUrl(draft.cover_path)
+  }, [coverFile, coverRemoved, draft?.cover_path])
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview)
+    }
+  }, [coverPreview])
 
   async function deleteBook(id: string, title: string) {
     if (!confirm(`Delete "${title}"? This can't be undone.`)) return
@@ -109,6 +137,52 @@ export default function Books() {
     await supabase.from('books').update({ cover_path: path }).eq('id', bookId)
   }
 
+  async function removeCover(path: string | null | undefined) {
+    if (!path) return
+    const { error } = await supabase.storage.from('covers').remove([path])
+    if (error && !/not found|does not exist/i.test(error.message)) throw error
+  }
+
+  function newBookDraft(importUrl = '') {
+    setDraft({ serial_number: nextSerialNumber })
+    setCoverFile(null)
+    setCoverRemoved(false)
+    setImportUrl(importUrl)
+  }
+
+  function categoryDraft(category: string | null | undefined) {
+    const name = (category ?? '').trim()
+    if (!name) return { category_id: null, categoryName: null }
+    const existing = categories?.find((c) => c.name.toLowerCase() === name.toLowerCase())
+    return existing ? { category_id: existing.id, categoryName: null } : { category_id: null, categoryName: name }
+  }
+
+  async function importBookDetails() {
+    if (!importUrl.trim()) return toast.error('Paste a Goodreads or Amazon link')
+    setImportBusy(true)
+    try {
+      const imported = await callFunction<ImportedBookDetails>('import-goodreads-book', { url: importUrl.trim() })
+      const nextDraft = draft ?? { serial_number: nextSerialNumber }
+      setDraft({
+        ...nextDraft,
+        title: imported.title || nextDraft.title,
+        author: imported.author ?? nextDraft.author ?? null,
+        description: imported.description ?? nextDraft.description ?? null,
+        pages: imported.pages ?? nextDraft.pages ?? null,
+        ...categoryDraft(imported.category),
+      })
+      if (imported.cover) {
+        setCoverFile(fileFromBase64(imported.cover))
+        setCoverRemoved(false)
+      }
+      toast.success('Book details filled in.')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
   async function save() {
     if (!draft?.title?.trim()) return toast.error('Title is required')
     if (!draft.serial_number || Number(draft.serial_number) < 1) {
@@ -125,6 +199,7 @@ export default function Books() {
         pages: draft.pages ? Number(draft.pages) : null,
         serial_number: Number(draft.serial_number),
         comments: draft.comments || null,
+        ...(coverRemoved && !coverFile ? { cover_path: null } : {}),
       }
       let bookId = draft.id
       if (bookId) {
@@ -135,10 +210,12 @@ export default function Books() {
         if (error) throw error
         bookId = data.id
       }
+      if (coverRemoved && !coverFile) await removeCover(draft.cover_path)
       if (coverFile && bookId) await uploadCover(bookId, coverFile)
       toast.success(draft.id ? 'Book updated.' : 'Book added.')
       setDraft(null)
       setCoverFile(null)
+      setCoverRemoved(false)
       refresh()
     } catch (e) {
       toast.error((e as Error).message)
@@ -151,7 +228,7 @@ export default function Books() {
     <AdminShell
       title="Books"
       actions={
-        <Button onClick={() => setDraft({ serial_number: nextSerialNumber })}>
+        <Button onClick={() => newBookDraft()}>
           <Plus className="size-4" /> Add book
         </Button>
       }
@@ -217,6 +294,8 @@ export default function Books() {
                   onClick={() => {
                     setDraft({ ...b })
                     setCoverFile(null)
+                    setCoverRemoved(false)
+                    setImportUrl('')
                   }}
                 >
                   <Pencil className="size-4" />
@@ -242,19 +321,42 @@ export default function Books() {
           if (!o) {
             setDraft(null)
             setCoverFile(null)
+            setCoverRemoved(false)
+            setImportUrl('')
           }
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="max-h-[90dvh] max-w-[calc(100vw-1rem)] overflow-y-auto p-4 sm:max-w-xl sm:p-6">
           <DialogHeader>
             <DialogTitle>{draft?.id ? 'Edit book' : 'Add book'}</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="space-y-3">
+              {!draft.id && (
+                <div className="rounded-lg border bg-secondary/30 p-3">
+                  <div className="flex flex-col gap-2 md:flex-row">
+                    <Input
+                      value={importUrl}
+                      onChange={(e) => setImportUrl(e.target.value)}
+                      placeholder="Goodreads or Amazon link"
+                      className="min-w-0 flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={importBusy}
+                      onClick={importBookDetails}
+                      className="w-full md:w-auto"
+                    >
+                      <Link className="size-4" /> {importBusy ? 'Filling...' : 'Fill details'}
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Field label="Title">
                 <Input value={draft.title ?? ''} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Author">
                   <Input value={draft.author ?? ''} onChange={(e) => setDraft({ ...draft, author: e.target.value })} />
                 </Field>
@@ -267,7 +369,7 @@ export default function Books() {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Pages">
                   <Input
                     type="number"
@@ -318,14 +420,42 @@ export default function Books() {
                 <Input value={draft.comments ?? ''} onChange={(e) => setDraft({ ...draft, comments: e.target.value })} />
               </Field>
               <Field label="Cover image">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
-                />
-                {coverFile && <p className="text-xs text-muted-foreground">{coverFile.name}</p>}
+                <div className="flex flex-col gap-3 rounded-lg border bg-secondary/20 p-3 sm:flex-row sm:items-center">
+                  <div className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
+                    {coverPreview ? (
+                      <img src={coverPreview} alt="Book cover preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageOff className="size-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="w-full min-w-0"
+                      onChange={(e) => {
+                        setCoverFile(e.target.files?.[0] ?? null)
+                        setCoverRemoved(false)
+                      }}
+                    />
+                    {coverFile && <p className="truncate text-xs text-muted-foreground">{coverFile.name}</p>}
+                    {(draft.cover_path || coverFile) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setCoverFile(null)
+                          setCoverRemoved(true)
+                        }}
+                      >
+                        Remove image
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </Field>
-              {/* Future: a "Get book info" button slots in here (TECH-PLAN §12). */}
             </div>
           )}
           <DialogFooter>
@@ -334,6 +464,7 @@ export default function Books() {
               onClick={() => {
                 setDraft(null)
                 setCoverFile(null)
+                setCoverRemoved(false)
               }}
             >
               Cancel
@@ -370,4 +501,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   )
+}
+
+function fileFromBase64(cover: ImportedBookDetails['cover']) {
+  if (!cover) throw new Error('Cover is missing')
+  const binary = atob(cover.data_base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], cover.filename, { type: cover.content_type })
 }

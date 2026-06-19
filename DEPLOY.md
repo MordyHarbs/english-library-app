@@ -30,6 +30,16 @@ npx supabase secrets set \
   SITE_URL='https://<will-set-after-netlify>.netlify.app'
 ```
 
+For Google Drive backups, also set OAuth credentials with Drive file access:
+```bash
+npx supabase secrets set \
+  GOOGLE_DRIVE_CLIENT_ID='<google-oauth-client-id>' \
+  GOOGLE_DRIVE_CLIENT_SECRET='<google-oauth-client-secret>' \
+  GOOGLE_DRIVE_REFRESH_TOKEN='<google-oauth-refresh-token>'
+```
+Backups are saved in My Drive under `Ayalot Library Backups/YYYY/MM/YYYY-MM-DD/<timestamp>/`.
+The app never deletes old backup folders.
+
 ## 3. Auth login emails (custom SMTP) — Dashboard
 Authentication → **Emails / SMTP Settings** → enable **Custom SMTP**:
 - Host `smtp.gmail.com`, Port `465`, Username `ayalotlibrary@gmail.com`,
@@ -64,9 +74,13 @@ Repo → Settings → Secrets and variables → Actions → add:
 - `SUPABASE_ANON_KEY` = anon/publishable key
 - `SUPABASE_DB_URL` = direct connection string (Settings → Database → URI)
 
-## 7. Schedule daily reminders — Dashboard SQL editor
+## 7. Schedule daily reminders and Drive backups — Dashboard SQL editor
 Open `supabase/prod-cron.sql`, replace `<PROJECT_REF>` and `<SERVICE_ROLE_KEY>`
 (Settings → API → service_role key), and run it.
+
+The cron jobs check every 5 minutes. The functions only run once per Jerusalem
+calendar day at or after the `daily_tasks_time` setting, which defaults to
+`08:00` and can be edited from Admin → Settings → Daily automation.
 
 ## 8. Migrate data
 ```bash
@@ -82,7 +96,9 @@ cat migration/migration-report.txt   # review unmatched rows
 - Open the site → `/login` with your email → code arrives via Gmail → log in.
 - Reserve a book as a guest; confirm the admin alert email + deep link.
 - In `/admin`: approve → lend → return one book.
-- Trigger a reminder dry-run: `curl -X POST https://<ref>.supabase.co/functions/v1/daily-reminders -H "Authorization: Bearer <service_role>"`.
+- Trigger a reminder dry-run: `curl -X POST https://<ref>.supabase.co/functions/v1/daily-reminders -H "Authorization: Bearer <service_role>" -H "Content-Type: application/json" -d '{"source":"manual"}'`.
+- Trigger a backup dry-run: `curl -X POST https://<ref>.supabase.co/functions/v1/backup-to-drive -H "Authorization: Bearer <service_role>" -H "Content-Type: application/json" -d '{"source":"manual"}'`.
+- In `/admin/settings`, use **Back up now** and confirm a new dated folder appears in Drive.
 
 ## Cutover (Phase 12)
 Once happy: point people to the Netlify URL, disable the old Apps Script triggers

@@ -23,6 +23,31 @@ export interface Availability {
   expected_return: string | null
 }
 
+export interface PublicSettings {
+  default_book_limit: number
+  max_book_limit: number
+  loan_duration_days: number
+}
+
+export interface ActiveAppNotice {
+  id: string
+  title: string
+  body: string
+  sort_order: number
+  dismissal_version: number
+}
+
+const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
+  default_book_limit: 5,
+  max_book_limit: 10,
+  loan_duration_days: 14,
+}
+
+function settingNumber(value: unknown, fallback: number) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
@@ -124,20 +149,70 @@ export function useAvailability() {
 export function usePublicSettings() {
   return useQuery({
     queryKey: ['publicSettings'],
-    queryFn: async () => {
+    queryFn: async (): Promise<PublicSettings> => {
       const { data, error } = await supabase
         .from('public_settings')
         .select('key, value')
       if (error) throw error
-      const out: Record<string, number> = {
-        default_book_limit: 5,
-        max_book_limit: 10,
-        loan_duration_days: 14,
-      }
+      const out = { ...DEFAULT_PUBLIC_SETTINGS }
       for (const row of data ?? []) {
-        if (row.key) out[row.key] = Number(row.value)
+        if (row.key === 'default_book_limit') {
+          out.default_book_limit = settingNumber(row.value, DEFAULT_PUBLIC_SETTINGS.default_book_limit)
+        } else if (row.key === 'max_book_limit') {
+          out.max_book_limit = settingNumber(row.value, DEFAULT_PUBLIC_SETTINGS.max_book_limit)
+        } else if (row.key === 'loan_duration_days') {
+          out.loan_duration_days = settingNumber(row.value, DEFAULT_PUBLIC_SETTINGS.loan_duration_days)
+        }
       }
       return out
+    },
+  })
+}
+
+export function useActiveAppNotices() {
+  return useQuery({
+    queryKey: ['activeAppNotices'],
+    queryFn: async (): Promise<ActiveAppNotice[]> => {
+      type ActiveAppNoticeRow = {
+        id: string | null
+        title: string | null
+        body: string | null
+        sort_order: number | null
+        dismissal_version?: number | null
+      }
+      const withVersion = await supabase
+        .from('active_app_notices')
+        .select('id, title, body, sort_order, dismissal_version')
+        .order('sort_order', { ascending: true })
+      let data: ActiveAppNoticeRow[] | null = withVersion.data
+      let error = withVersion.error
+      let hasDismissalVersion = true
+
+      if (error && /schema cache|dismissal_version/i.test(error.message)) {
+        const withoutVersion = await supabase
+          .from('active_app_notices')
+          .select('id, title, body, sort_order')
+          .order('sort_order', { ascending: true })
+        data = withoutVersion.data
+        error = withoutVersion.error
+        hasDismissalVersion = false
+      }
+
+      if (error) {
+        if (/schema cache|active_app_notices|app_notices/i.test(error.message)) return []
+        throw error
+      }
+      return (data ?? [])
+        .filter((notice) => notice.id)
+        .map((notice) => ({
+          id: notice.id!,
+          title: notice.title ?? '',
+          body: notice.body ?? '',
+          sort_order: notice.sort_order ?? 999,
+          dismissal_version: hasDismissalVersion && 'dismissal_version' in notice
+            ? notice.dismissal_version ?? 1
+            : 1,
+        }))
     },
   })
 }

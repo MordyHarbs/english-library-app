@@ -72,17 +72,48 @@ async function sendWelcome(
     .maybeSingle()
   if (toggle && toggle.value === false) return
 
-  const { data: s } = await db
+  const { data: settings } = await db
     .from('settings')
-    .select('value')
-    .eq('key', 'site_url')
-    .maybeSingle()
-  const siteUrl = String(s?.value ?? 'http://localhost:5173').replace(/^"|"$/g, '').replace(/\/$/, '')
+    .select('key, value')
+    .in('key', ['site_url', 'default_book_limit', 'loan_duration_days', 'default_extend_days', 'late_fee_per_week'])
+  const map: Record<string, unknown> = {}
+  for (const s of settings ?? []) map[s.key] = s.value
+  const siteUrl = String(map.site_url ?? 'http://localhost:5173').replace(/^"|"$/g, '').replace(/\/$/, '')
+  const maxBooks = Number(map.default_book_limit ?? 3)
+  const durationText = formatDays(Number(map.loan_duration_days ?? 21), false)
+  const lateFee = Number(map.late_fee_per_week ?? 5) || 5
+  const extendText = formatDays(Number(map.default_extend_days ?? 7), true)
+  const displayName = name || 'New Member'
+
+  const text = `Hello ${displayName},\n\nWelcome to our English library! We're excited to have you as a member.\n\nYou can browse our catalog online at ${siteUrl}.\n\nHappy reading!`
+
+  const html = `<b>Hello ${esc(displayName)},<br><br>` +
+    `Welcome to our English library! We're excited to have you as a member.<br><br>` +
+    `You can browse our catalog online at <a href="${siteUrl}">Ayalot Library</a>.</b><br><br><br>` +
+    `* You can take up to ${maxBooks} books at a time<br><br>` +
+    `* Please return the books within ${durationText}, if it isn't enough time for you - please contact us and you can extend for up to ${extendText} at a time.<br><br>` +
+    `* If returned late without contacting us - there will be a charge of ${lateFee} shekel per week.<br><br><br>` +
+    `<b>Happy reading!</b><br><br>` +
+    `P.S. This is an automatic email. <br><br>` +
+    `<img src="${siteUrl}/logo.png" alt="Ayalot Library Logo" style="max-width:200px;">`
 
   const ok = await sendEmail({
     to: email,
-    subject: 'Welcome to Ayalot Library',
-    html: `<p>Hi ${name},</p><p>You've been added as a member of Ayalot Library. You can browse the catalog and request books anytime.</p><p>To track your books and requests, <a href="${siteUrl}/login">log in with your email</a> — we'll send you a code. Setting a password is optional.</p><p>Happy reading!</p>`,
+    subject: 'Welcome to the Ayalot Library!',
+    text,
+    html,
   })
   if (ok) await db.from('email_log').insert({ type: 'welcome', recipient: email })
 }
+
+function formatDays(days: number, isExtend: boolean) {
+  if (days % 7 === 0) {
+    const weeks = days / 7
+    if (weeks === 1) return isExtend ? 'a week' : '1 week'
+    return `${weeks} weeks`
+  }
+  return `${days} days`
+}
+
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

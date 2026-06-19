@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { AdminShell } from '@/components/AdminShell'
-import { useOpenLoans, type AdminLoan } from '@/lib/manage'
+import { useOpenLoans, useSettings, type AdminLoan } from '@/lib/manage'
 import { callFunction } from '@/lib/functions'
 import { fmtDate, isOverdue } from '@/lib/format'
+import { DEFAULT_EXTEND_DAYS, defaultExtendDays, dueDateAfterDays } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -22,6 +23,7 @@ type Filter = 'all' | 'overdue' | 'due_soon'
 
 export default function Loans() {
   const { data: loans, isLoading } = useOpenLoans()
+  const { data: settings } = useSettings()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const initialFilter = searchParams.get('filter')
@@ -31,8 +33,9 @@ export default function Loans() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [extendOpen, setExtendOpen] = useState(false)
-  const [newDue, setNewDue] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'))
+  const [newDue, setNewDue] = useState(dueDateAfterDays(undefined, DEFAULT_EXTEND_DAYS))
   const [busy, setBusy] = useState(false)
+  const extendDays = defaultExtendDays(settings)
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -49,10 +52,19 @@ export default function Loans() {
   const toggle = (id: string) =>
     setSelected((s) => {
       const n = new Set(s)
-      n.has(id) ? n.delete(id) : n.add(id)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
       return n
     })
   const ids = [...selected]
+  const defaultNewDue = dueDateAfterDays(
+    (loans ?? [])
+      .filter((loan) => selected.has(loan.id))
+      .map((loan) => loan.due_date)
+      .sort()
+      .at(-1),
+    extendDays,
+  )
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['admin'] })
@@ -176,7 +188,10 @@ export default function Loans() {
               <Button variant="destructive" disabled={busy} onClick={deleteSelected}>
                 Delete
               </Button>
-              <Button variant="outline" disabled={busy} onClick={() => setExtendOpen(true)}>
+              <Button variant="outline" disabled={busy} onClick={() => {
+                setNewDue(defaultNewDue)
+                setExtendOpen(true)
+              }}>
                 Extend
               </Button>
               <Button disabled={busy} onClick={returnSelected}>
