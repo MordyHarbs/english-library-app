@@ -155,12 +155,7 @@ async function parseGoodreads(html: string, pageUrl: string): Promise<ImportedBo
 }
 
 async function parseAmazon(html: string, pageUrl: string): Promise<ImportedBook> {
-  const imageUrl = absoluteUrl(
-    meta(html, 'property', 'og:image') ??
-      matchFirst(html, /"hiRes"\s*:\s*"([^"]+)"/i) ??
-      matchFirst(html, /"large"\s*:\s*"([^"]+)"/i),
-    pageUrl,
-  )
+  const imageUrl = bestAmazonImageUrl(html, pageUrl)
   const title = cleanAmazonTitle(
     cleanText(
       textBetween(html, /<span[^>]+id=["']productTitle["'][^>]*>/i, /<\/span>/i) ??
@@ -191,6 +186,52 @@ async function parseAmazon(html: string, pageUrl: string): Promise<ImportedBook>
     category,
     cover: imageUrl ? await downloadCover(imageUrl, title || 'amazon-cover') : null,
   }
+}
+
+function bestAmazonImageUrl(html: string, pageUrl: string) {
+  const candidates = [
+    ...amazonDynamicImageCandidates(html),
+    decodeJsonString(matchFirst(html, /"hiRes"\s*:\s*"([^"]+)"/i)),
+    decodeJsonString(matchFirst(html, /"large"\s*:\s*"([^"]+)"/i)),
+    imageSrcById(html, 'landingImage'),
+    imageSrcById(html, 'imgBlkFront'),
+    imageSrcById(html, 'ebooksImgBlkFront'),
+    meta(html, 'property', 'og:image'),
+  ]
+    .map((value) => absoluteUrl(cleanAmazonImageUrl(value), pageUrl))
+    .filter((value): value is string => !!value && !/grey-pixel|transparent-pixel|sprite|favicon/i.test(value))
+
+  return candidates[0] ?? null
+}
+
+function amazonDynamicImageCandidates(html: string) {
+  const candidates: string[] = []
+  const attrs = html.matchAll(/data-a-dynamic-image=["']([^"']+)["']/gi)
+  for (const attr of attrs) {
+    const decoded = decodeEntities(attr[1])
+    try {
+      const images = JSON.parse(decoded) as Record<string, [number, number]>
+      const sorted = Object.entries(images)
+        .filter(([, size]) => Array.isArray(size) && size[0] > 80 && size[1] > 80)
+        .sort(([, a], [, b]) => b[0] * b[1] - a[0] * a[1])
+      candidates.push(...sorted.map(([url]) => url))
+    } catch {
+      const urls = decoded.match(/https?:\\?\/\\?\/[^"{}]+/g) ?? []
+      candidates.push(...urls.map(decodeJsonString))
+    }
+  }
+  return candidates
+}
+
+function imageSrcById(html: string, id: string) {
+  const re = new RegExp(`<img[^>]+id=["']${escapeRegex(id)}["'][^>]+src=["']([^"']+)["'][^>]*>`, 'i')
+  return decodeEntities(matchFirst(html, re))
+}
+
+function cleanAmazonImageUrl(value: string | null | undefined) {
+  if (!value) return null
+  const decoded = decodeJsonString(decodeEntities(value)).replace(/\\\//g, '/')
+  return decoded.replace(/\._[A-Z0-9_,]+_\.(jpg|jpeg|png|webp)(\?.*)?$/i, '.$1$2')
 }
 
 function findBookJsonLd(html: string): Record<string, unknown> | null {
