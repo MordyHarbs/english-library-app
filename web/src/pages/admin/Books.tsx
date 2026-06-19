@@ -33,7 +33,7 @@ type Draft = Partial<CatalogBook> & { id?: string; categoryName?: string | null 
 const NEW_CATEGORY = '__new__'
 const NO_CATEGORY = '__none__'
 
-interface ImportedGoodreadsBook {
+interface ImportedBookDetails {
   title: string
   author: string | null
   description: string | null
@@ -59,7 +59,7 @@ export default function Books() {
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [goodreadsUrl, setGoodreadsUrl] = useState('')
+  const [importUrl, setImportUrl] = useState('')
   const [importBusy, setImportBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [openBook, setOpenBook] = useState<string | null>(null)
@@ -128,7 +128,7 @@ export default function Books() {
   function newBookDraft(importUrl = '') {
     setDraft({ serial_number: nextSerialNumber })
     setCoverFile(null)
-    setGoodreadsUrl(importUrl)
+    setImportUrl(importUrl)
   }
 
   function categoryDraft(category: string | null | undefined) {
@@ -138,11 +138,11 @@ export default function Books() {
     return existing ? { category_id: existing.id, categoryName: null } : { category_id: null, categoryName: name }
   }
 
-  async function importGoodreads() {
-    if (!goodreadsUrl.trim()) return toast.error('Paste a Goodreads link')
+  async function importBookDetails() {
+    if (!importUrl.trim()) return toast.error('Paste a Goodreads or Amazon link')
     setImportBusy(true)
     try {
-      const imported = await callFunction<ImportedGoodreadsBook>('import-goodreads-book', { url: goodreadsUrl.trim() })
+      const imported = await callFunction<ImportedBookDetails>('import-goodreads-book', { url: importUrl.trim() })
       const nextDraft = draft ?? { serial_number: nextSerialNumber }
       setDraft({
         ...nextDraft,
@@ -269,7 +269,7 @@ export default function Books() {
                   onClick={() => {
                     setDraft({ ...b })
                     setCoverFile(null)
-                    setGoodreadsUrl('')
+                    setImportUrl('')
                   }}
                 >
                   <Pencil className="size-4" />
@@ -295,7 +295,7 @@ export default function Books() {
           if (!o) {
             setDraft(null)
             setCoverFile(null)
-            setGoodreadsUrl('')
+            setImportUrl('')
           }
         }}
       >
@@ -309,12 +309,12 @@ export default function Books() {
                 <div className="rounded-lg border bg-secondary/30 p-3">
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
-                      value={goodreadsUrl}
-                      onChange={(e) => setGoodreadsUrl(e.target.value)}
-                      placeholder="Goodreads link"
+                      value={importUrl}
+                      onChange={(e) => setImportUrl(e.target.value)}
+                      placeholder="Goodreads or Amazon link"
                       className="min-w-0 flex-1"
                     />
-                    <Button type="button" variant="outline" disabled={importBusy} onClick={importGoodreads}>
+                    <Button type="button" variant="outline" disabled={importBusy} onClick={importBookDetails}>
                       <Link className="size-4" /> {importBusy ? 'Filling...' : 'Fill details'}
                     </Button>
                   </div>
@@ -440,7 +440,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function fileFromBase64(cover: ImportedGoodreadsBook['cover']) {
+function fileFromBase64(cover: ImportedBookDetails['cover']) {
   if (!cover) throw new Error('Cover is missing')
   const binary = atob(cover.data_base64)
   const bytes = new Uint8Array(binary.length)

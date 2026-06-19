@@ -1,4 +1,4 @@
-// import-goodreads-book — reads a Goodreads book page and returns editable book metadata.
+// import-goodreads-book — reads a Goodreads or Amazon book page and returns editable book metadata.
 import { preflight, json } from '../_shared/cors.ts'
 import { requireAdmin } from '../_shared/db.ts'
 
@@ -26,19 +26,23 @@ denoRuntime.serve(async (req) => {
   if (pf) return pf
 
   try {
-    try {
-      await requireAdmin(req)
-    } catch (resp) {
-      return resp instanceof Response ? resp : json({ error: 'Forbidden' }, 403)
+    if (!isServiceRoleCall(req)) {
+      try {
+        await requireAdmin(req)
+      } catch (resp) {
+        return resp instanceof Response ? resp : json({ error: 'Forbidden' }, 403)
+      }
     }
 
     const { url } = await req.json().catch(() => ({ url: '' }))
-    const goodreadsUrl = normalizeGoodreadsUrl(String(url ?? ''))
-    if (!goodreadsUrl) return json({ error: 'Paste a valid Goodreads book link.' }, 400)
+    const bookUrl = normalizeBookUrl(String(url ?? ''))
+    if (!bookUrl) return json({ error: 'Paste a valid Goodreads or Amazon book link.' }, 400)
 
-    const html = await fetchHtml(goodreadsUrl)
-    const imported = await parseGoodreads(html, goodreadsUrl)
-    if (!imported.title) return json({ error: 'Could not find book details on that Goodreads page.' }, 422)
+    const html = await fetchHtml(bookUrl.url, bookUrl.source)
+    const imported = bookUrl.source === 'amazon'
+      ? await parseAmazon(html, bookUrl.url)
+      : await parseGoodreads(html, bookUrl.url)
+    if (!imported.title) return json({ error: `Could not find book details on that ${bookUrl.source} page.` }, 422)
 
     return json(imported)
   } catch (e) {
@@ -46,6 +50,32 @@ denoRuntime.serve(async (req) => {
     return json({ error: (e as Error).message }, 500)
   }
 })
+
+function normalizeBookUrl(value: string): { source: 'goodreads' | 'amazon'; url: string } | null {
+  const goodreads = normalizeGoodreadsUrl(value)
+  if (goodreads) return { source: 'goodreads', url: goodreads }
+  const amazon = normalizeAmazonUrl(value)
+  if (amazon) return { source: 'amazon', url: amazon }
+  return null
+}
+
+function isServiceRoleCall(req: Request) {
+  const auth = req.headers.get('Authorization') ?? ''
+  const token = auth.replace(/^Bearer\s+/i, '')
+  const payload = decodeJwtPayload(token)
+  return payload?.role === 'service_role'
+}
+
+function decodeJwtPayload(token: string): { role?: string } | null {
+  try {
+    const encoded = token.split('.')[1]
+    if (!encoded) return null
+    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(base64)) as { role?: string }
+  } catch {
+    return null
+  }
+}
 
 function normalizeGoodreadsUrl(value: string) {
   try {
@@ -60,7 +90,19 @@ function normalizeGoodreadsUrl(value: string) {
   }
 }
 
-async function fetchHtml(url: string) {
+function normalizeAmazonUrl(value: string) {
+  try {
+    const url = new URL(value.trim())
+    if (!/(^|\.)amazon\.[a-z.]+$/i.test(url.hostname)) return null
+    const asin = /\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:[/?#]|$)/i.exec(url.pathname)?.[1]
+    if (!asin) return null
+    return `https://www.amazon.com/dp/${asin.toUpperCase()}`
+  } catch {
+    return null
+  }
+}
+
+async function fetchHtml(url: string, source: 'goodreads' | 'amazon') {
   const resp = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 AyalotLibraryBot/1.0',
@@ -68,7 +110,7 @@ async function fetchHtml(url: string) {
       'Accept-Language': 'en-US,en;q=0.9',
     },
   })
-  if (!resp.ok) throw new Error(`Goodreads returned ${resp.status}`)
+  if (!resp.ok) throw new Error(`${source === 'amazon' ? 'Amazon' : 'Goodreads'} returned ${resp.status}`)
   return resp.text()
 }
 
@@ -109,6 +151,45 @@ async function parseGoodreads(html: string, pageUrl: string): Promise<ImportedBo
     pages,
     category,
     cover: imageUrl ? await downloadCover(imageUrl, title || 'goodreads-cover') : null,
+  }
+}
+
+async function parseAmazon(html: string, pageUrl: string): Promise<ImportedBook> {
+  const imageUrl = absoluteUrl(
+    meta(html, 'property', 'og:image') ??
+      matchFirst(html, /"hiRes"\s*:\s*"([^"]+)"/i) ??
+      matchFirst(html, /"large"\s*:\s*"([^"]+)"/i),
+    pageUrl,
+  )
+  const title = cleanAmazonTitle(
+    cleanText(
+      textBetween(html, /<span[^>]+id=["']productTitle["'][^>]*>/i, /<\/span>/i) ??
+        meta(html, 'property', 'og:title') ??
+        matchFirst(html, /<title[^>]*>([\s\S]*?)<\/title>/i),
+    ),
+  )
+  const author = bestAuthor([
+    ...amazonContributorCandidates(html),
+    cleanText(textBetween(html, /<span[^>]+id=["']bylineInfo["'][^>]*>/i, /<\/span>/i)),
+    cleanText(textBetween(html, /<div[^>]+id=["']bylineInfo_feature_div["'][^>]*>/i, /<\/div>/i)),
+  ])
+  const description = bestDescription([
+    ...amazonDescriptionCandidates(html),
+    meta(html, 'property', 'og:description'),
+  ])
+  const pages = parseAmazonPages(html)
+  const category = bestCategory([
+    ...amazonBreadcrumbCandidates(html),
+    matchFirst(html, /Best Sellers Rank[\s\S]*?in\s+<a[^>]*>([^<]+)<\/a>/i),
+  ])
+
+  return {
+    title,
+    author,
+    description,
+    pages,
+    category,
+    cover: imageUrl ? await downloadCover(imageUrl, title || 'amazon-cover') : null,
   }
 }
 
@@ -165,6 +246,27 @@ function formattedSpanCandidates(html: string) {
   return Array.from(matches, (match) => stripTags(match[1]))
 }
 
+function amazonDescriptionCandidates(html: string) {
+  return [
+    textBetween(html, /<div[^>]+id=["']bookDescription_feature_div["'][^>]*>/i, /<\/div>\s*<\/div>/i),
+    textBetween(html, /<div[^>]+id=["']productDescription["'][^>]*>/i, /<\/div>\s*<\/div>/i),
+    textBetween(html, /<noscript>\s*<div[^>]+id=["']bookDescription_feature_div["'][^>]*>/i, /<\/div>\s*<\/noscript>/i),
+    ...embeddedDescriptionCandidates(html),
+  ]
+}
+
+function amazonContributorCandidates(html: string) {
+  const contributors = html.matchAll(/<a[^>]+class=["'][^"']*contributorNameID[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)
+  const authorLinks = html.matchAll(/<span[^>]+class=["'][^"']*author[^"']*["'][^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/gi)
+  return [...Array.from(contributors, (match) => stripTags(match[1])), ...Array.from(authorLinks, (match) => stripTags(match[1]))]
+}
+
+function amazonBreadcrumbCandidates(html: string) {
+  const section = textBetween(html, /<div[^>]+id=["']wayfinding-breadcrumbs_feature_div["'][^>]*>/i, /<\/div>/i)
+  const matches = section.matchAll(/<a[^>]*>([\s\S]*?)<\/a>/gi)
+  return Array.from(matches, (match) => stripTags(match[1]))
+}
+
 function embeddedDescriptionCandidates(html: string) {
   const candidates: string[] = []
   const patterns = [
@@ -189,6 +291,21 @@ function bestDescription(values: Array<string | null | undefined>) {
   const full = cleaned.filter((value) => !isTruncated(value))
   const pool = full.length ? full : cleaned
   return pool.sort((a, b) => b.length - a.length)[0]
+}
+
+function bestAuthor(values: Array<string | null | undefined>) {
+  const cleaned = values
+    .map((value) => cleanText(value).replace(/^by\s+/i, '').replace(/\s*\([^)]*\)\s*$/g, '').trim())
+    .filter((value) => value && !/visit amazon|amazon/i.test(value))
+  return cleaned[0] || null
+}
+
+function bestCategory(values: Array<string | null | undefined>) {
+  const ignored = new Set(['books', 'subjects', 'kindle store', 'literature & fiction'])
+  const cleaned = values
+    .map((value) => cleanText(value))
+    .filter((value) => value && !ignored.has(value.toLowerCase()))
+  return cleaned.at(-1) ?? cleaned[0] ?? null
 }
 
 function isTruncated(value: string) {
@@ -220,6 +337,26 @@ function numberFromJson(value: unknown): number | null {
 function parsePages(html: string) {
   const pages = Number((/([0-9][0-9,]*)\s+pages/i.exec(stripTags(html))?.[1] ?? '').replace(/,/g, ''))
   return Number.isFinite(pages) && pages > 0 ? pages : null
+}
+
+function parseAmazonPages(html: string) {
+  const plain = stripTags(html)
+  const patterns = [
+    /Print length\s*([0-9][0-9,]*)\s*pages/i,
+    /([0-9][0-9,]*)\s*pages/i,
+  ]
+  for (const pattern of patterns) {
+    const pages = Number((pattern.exec(plain)?.[1] ?? '').replace(/,/g, ''))
+    if (Number.isFinite(pages) && pages > 0) return pages
+  }
+  return null
+}
+
+function cleanAmazonTitle(value: string) {
+  return value
+    .replace(/\s*:\s*Amazon\.[^:]+:\s*Books\s*$/i, '')
+    .replace(/\s*:\s*Books\s*$/i, '')
+    .trim()
 }
 
 function absoluteUrl(value: string | null, base: string) {
