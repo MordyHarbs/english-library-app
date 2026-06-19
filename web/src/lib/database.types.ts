@@ -39,6 +39,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_notices: {
+        Row: {
+          body: string
+          created_at: string
+          dismissal_version: number
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          dismissal_version?: number
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          dismissal_version?: number
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       books: {
         Row: {
           author: string | null
@@ -385,6 +418,16 @@ export type Database = {
       }
     }
     Views: {
+      active_app_notices: {
+        Row: {
+          body: string | null
+          dismissal_version: number | null
+          id: string | null
+          sort_order: number | null
+          title: string | null
+        }
+        Relationships: []
+      }
       book_availability: {
         Row: {
           book_id: string | null

@@ -137,17 +137,6 @@ async function sendEmails(
     .in('book_id', ctx.bookIds)
   const availMap = new Map((avail ?? []).map((a) => [a.book_id, a]))
 
-  const bookList = (books ?? [])
-    .map((b) => {
-      const a = availMap.get(b.id)
-      const out = a && !a.is_available
-      const tag = out
-        ? ` — <b style="color:#b45309">not currently available${a?.expected_return ? ` (back ${a.expected_return})` : ''}</b>`
-        : ''
-      return `<li>${esc(b.title)}${b.author ? ` <span style="color:#666">by ${esc(b.author)}</span>` : ''}${tag}</li>`
-    })
-    .join('')
-
   let bookCards = `<div style="text-align: center; margin: 20px 0;">`
   for (const book of books ?? []) {
     const a = availMap.get(book.id)
@@ -207,9 +196,9 @@ async function sendEmails(
   const reqHtml = `
     <p>Hi ${esc(ctx.name)},</p>
     <p>We received your request for:</p>
-    <ul>${bookList}</ul>
-    <p>The library will review it and email you to confirm pickup.</p>
-    ${!ctx.isMember ? `<p style="color:#666">Tip: if you're a member, you can <a href="${siteUrl}/login">log in</a> to track your requests — it's optional.</p>` : ''}`
+    ${bookCards}
+    <p>The library will review your request and email you to confirm pickup.</p>
+    ${!ctx.isMember ? `<p style="color:#666">Want to track this request and your books? <a href="${siteUrl}/login">Log in with your email</a> — totally optional.</p>` : ''}`
   const reqOk = await sendEmail({
     to: ctx.email,
     subject: 'Your Ayalot Library request',

@@ -96,19 +96,42 @@ async function emailLent(
 
   const { data: loans } = await db
     .from('loans')
-    .select('books(title)')
+    .select('books(title, cover_path)')
     .in('id', loanIds)
-  const list = (loans ?? [])
-    .map((l) => `<li>${(l.books as { title: string } | null)?.title ?? 'book'}</li>`)
-    .join('')
+  const cards = bookCards(db, (loans ?? []).map((l) => l.books))
 
   const ok = await sendEmail({
     to: member.email,
     subject: 'Books checked out — Ayalot Library',
-    html: `<p>Hi ${member.name},</p><p>You've checked out:</p><ul>${list}</ul><p>Please return by <b>${due}</b>. Enjoy!</p>`,
+    html: `<p>Hi ${esc(member.name)},</p><p>You've checked out:</p>${cards}<p>Please return by <b>${due}</b>. Enjoy!</p>`,
   })
   if (ok)
     await db
       .from('email_log')
       .insert({ type: 'books_lent', recipient: member.email })
 }
+
+function bookCards(db: ReturnType<typeof serviceClient>, books: unknown[]) {
+  let html = `<div style="text-align: center; margin: 20px 0;">`
+  for (const raw of books) {
+    const book = raw as { title: string; cover_path: string | null } | null
+    const title = book?.title ?? 'book'
+    const cover = coverUrl(db, book?.cover_path)
+    html += `<div style="margin: 16px 8px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; display: inline-block; width: 200px; height: 320px; vertical-align: top; text-align: center; overflow: hidden; background-color: #fafafa;">`
+    html += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">`
+    html += `<tr><td height="52" align="center" valign="middle" style="height: 52px; vertical-align: middle; text-align: center; font-weight: bold; font-size: 14px; line-height: 1.3; color: #222;">${esc(title)}</td></tr>`
+    html += `</table>`
+    if (cover) html += `<img src="${cover}" alt="${esc(title)}" style="max-height: 230px; max-width: 180px; width: auto; height: auto; border-radius: 4px; object-fit: contain;" />`
+    html += `</div>`
+  }
+  html += `</div>`
+  return html
+}
+
+function coverUrl(db: ReturnType<typeof serviceClient>, path: string | null | undefined) {
+  if (!path) return ''
+  return db.storage.from('covers').getPublicUrl(path).data.publicUrl
+}
+
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

@@ -75,14 +75,14 @@ async function sendWelcome(
   const { data: settings } = await db
     .from('settings')
     .select('key, value')
-    .in('key', ['site_url', 'default_book_limit', 'loan_duration_days', 'late_fee_per_week'])
+    .in('key', ['site_url', 'default_book_limit', 'loan_duration_days', 'default_extend_days', 'late_fee_per_week'])
   const map: Record<string, unknown> = {}
   for (const s of settings ?? []) map[s.key] = s.value
   const siteUrl = String(map.site_url ?? 'http://localhost:5173').replace(/^"|"$/g, '').replace(/\/$/, '')
   const maxBooks = Number(map.default_book_limit ?? 3)
   const durationText = formatDays(Number(map.loan_duration_days ?? 21), false)
   const lateFee = Number(map.late_fee_per_week ?? 5) || 5
-  const extendText = 'a week'
+  const extendText = formatDays(Number(map.default_extend_days ?? 7), true)
   const displayName = name || 'New Member'
 
   const text = `Hello ${displayName},\n\nWelcome to our English library! We're excited to have you as a member.\n\nYou can browse our catalog online at ${siteUrl}.\n\nHappy reading!`

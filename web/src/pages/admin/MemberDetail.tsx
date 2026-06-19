@@ -2,14 +2,15 @@ import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addDays, format } from 'date-fns'
 import { ArrowLeft, Search, Plus, X, Pencil } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { StatusBadge } from '@/components/StatusBadge'
 import { supabase } from '@/lib/supabase'
 import { callFunction } from '@/lib/functions'
+import { useSettings } from '@/lib/manage'
 import { useBooks } from '@/lib/queries'
 import { fmtDate, isOverdue } from '@/lib/format'
+import { DEFAULT_EXTEND_DAYS, defaultExtendDays, dueDateAfterDays } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -92,13 +93,15 @@ export default function MemberDetail() {
   const qc = useQueryClient()
   const { data, isLoading } = useMemberDetail(id)
   const { data: allBooks } = useBooks()
+  const { data: settings } = useSettings()
 
   const [busy, setBusy] = useState(false)
   const [bookSearch, setBookSearch] = useState('')
   const [toLend, setToLend] = useState<{ id: string; title: string }[]>([])
   const [extendLoan, setExtendLoan] = useState<MemberLoan | null>(null)
-  const [newDue, setNewDue] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'))
+  const [newDue, setNewDue] = useState(dueDateAfterDays(undefined, DEFAULT_EXTEND_DAYS))
   const [draft, setDraft] = useState<Draft | null>(null)
+  const extendDays = defaultExtendDays(settings)
 
   const bookMatches = useMemo(() => {
     const q = bookSearch.trim().toLowerCase()
@@ -351,7 +354,7 @@ export default function MemberDetail() {
                     </span>
                     <Button size="sm" variant="outline" className="w-full" disabled={busy} onClick={() => {
                       setExtendLoan(l)
-                      setNewDue(l.due_date)
+                      setNewDue(dueDateAfterDays(l.due_date, extendDays))
                     }}>
                       Extend
                     </Button>

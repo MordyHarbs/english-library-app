@@ -124,23 +124,22 @@ async function emailSummary(
   const ids = decisions.map((d) => d.item_id)
   const { data: items } = await db
     .from('reservation_items')
-    .select('id, status, books(title)')
+    .select('id, status, books(title, cover_path)')
     .in('id', ids)
 
   const approved = (items ?? [])
     .filter((i) => i.status === 'approved' || i.status === 'fulfilled')
-    .map((i) => (i.books as { title: string } | null)?.title ?? 'book')
+    .map((i) => i.books)
   const rejected = (items ?? [])
     .filter((i) => i.status === 'rejected')
-    .map((i) => (i.books as { title: string } | null)?.title ?? 'book')
+    .map((i) => i.books)
 
-  const li = (arr: string[]) => arr.map((t) => `<li>${t}</li>`).join('')
-  let html = `<p>Hi ${res.name},</p><p>We've reviewed your book request.</p>`
+  let html = `<p>Hi ${esc(res.name)},</p><p>We've reviewed your book request.</p>`
   if (approved.length)
-    html += `<p><b>Ready for pickup:</b></p><ul>${li(approved)}</ul>`
+    html += `<p><b>Ready for pickup:</b></p>${bookCards(db, approved)}`
   if (rejected.length)
-    html += `<p><b>Not available right now:</b></p><ul>${li(rejected)}</ul>`
-  if (message?.trim()) html += `<p>${message.trim().replace(/</g, '&lt;')}</p>`
+    html += `<p><b>Not available right now:</b></p>${bookCards(db, rejected)}`
+  if (message?.trim()) html += `<p>${esc(message.trim())}</p>`
   html += `<p>Thank you!<br>Ayalot Library</p>`
 
   const ok = await sendEmail({
@@ -155,3 +154,28 @@ async function emailSummary(
       reservation_id: reservationId,
     })
 }
+
+function bookCards(db: ReturnType<typeof serviceClient>, books: unknown[]) {
+  let html = `<div style="text-align: center; margin: 20px 0;">`
+  for (const raw of books) {
+    const book = raw as { title: string; cover_path: string | null } | null
+    const title = book?.title ?? 'book'
+    const cover = coverUrl(db, book?.cover_path)
+    html += `<div style="margin: 16px 8px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; display: inline-block; width: 200px; height: 320px; vertical-align: top; text-align: center; overflow: hidden; background-color: #fafafa;">`
+    html += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">`
+    html += `<tr><td height="52" align="center" valign="middle" style="height: 52px; vertical-align: middle; text-align: center; font-weight: bold; font-size: 14px; line-height: 1.3; color: #222;">${esc(title)}</td></tr>`
+    html += `</table>`
+    if (cover) html += `<img src="${cover}" alt="${esc(title)}" style="max-height: 230px; max-width: 180px; width: auto; height: auto; border-radius: 4px; object-fit: contain;" />`
+    html += `</div>`
+  }
+  html += `</div>`
+  return html
+}
+
+function coverUrl(db: ReturnType<typeof serviceClient>, path: string | null | undefined) {
+  if (!path) return ''
+  return db.storage.from('covers').getPublicUrl(path).data.publicUrl
+}
+
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

@@ -9,6 +9,7 @@ insert into settings (key, value, description) values
   ('max_book_limit',          '10'::jsonb,                          'Hard block: max books per reservation'),
   ('late_fee_per_week',       '0'::jsonb,                           'Late fee per overdue week (0 = off)'),
   ('reminder_days_before',    '2'::jsonb,                           'Send "due soon" this many days before due date'),
+  ('daily_tasks_time',        '"08:00"'::jsonb,                     'Jerusalem time when daily backups and reminder checks should run'),
   ('email_member_on_finalize','true'::jsonb,                        'Email member when a reservation is finalized'),
   ('email_member_on_lend',    'true'::jsonb,                        'Email member when books are lent out'),
   ('email_member_on_return',  'false'::jsonb,                       'Email member when books are returned'),

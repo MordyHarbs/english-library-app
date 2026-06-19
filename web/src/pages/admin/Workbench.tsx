@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { addDays, format } from 'date-fns'
 import { Search, UserRound, Plus, X } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
-import { useMembers, useMemberWorkbench, useOpenLoans, type Member } from '@/lib/manage'
+import { useMembers, useMemberWorkbench, useOpenLoans, useSettings, type Member } from '@/lib/manage'
 import { useBooks } from '@/lib/queries'
 import { callFunction } from '@/lib/functions'
 import { fmtDate, isOverdue } from '@/lib/format'
+import { DEFAULT_EXTEND_DAYS, defaultExtendDays, dueDateAfterDays } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -31,7 +31,7 @@ export default function Workbench() {
 
   // Shared extend dialog.
   const [extendIds, setExtendIds] = useState<string[] | null>(null)
-  const [newDue, setNewDue] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'))
+  const [newDue, setNewDue] = useState(dueDateAfterDays(undefined, DEFAULT_EXTEND_DAYS))
 
   // --- By member ---
   const { data: members } = useMembers()
@@ -46,8 +46,10 @@ export default function Workbench() {
 
   // --- By book ---
   const { data: openLoans } = useOpenLoans()
+  const { data: settings } = useSettings()
   const [loanSearch, setLoanSearch] = useState('')
   const [bookSel, setBookSel] = useState<Set<string>>(new Set())
+  const extendDays = defaultExtendDays(settings)
 
   const memberMatches = useMemo(() => {
     const q = memberSearch.trim().toLowerCase()
@@ -85,8 +87,20 @@ export default function Workbench() {
   }
   const toggle = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
     const n = new Set(set)
-    n.has(id) ? n.delete(id) : n.add(id)
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
     setter(n)
+  }
+
+  function openExtendDialog(ids: string[]) {
+    const idSet = new Set(ids)
+    const latestDueDate = [...(openLoans ?? []), ...(wb?.loans ?? [])]
+      .filter((loan) => idSet.has(loan.id))
+      .map((loan) => loan.due_date)
+      .sort()
+      .at(-1)
+    setNewDue(dueDateAfterDays(latestDueDate, extendDays))
+    setExtendIds(ids)
   }
 
   async function lendHolds() {
@@ -215,7 +229,7 @@ export default function Workbench() {
               <Button disabled={busy} onClick={() => doReturn([...bookSel])}>
                 Return ({bookSel.size})
               </Button>
-              <Button variant="outline" disabled={busy} onClick={() => setExtendIds([...bookSel])}>
+              <Button variant="outline" disabled={busy} onClick={() => openExtendDialog([...bookSel])}>
                 Extend ({bookSel.size})
               </Button>
             </div>
@@ -373,7 +387,7 @@ export default function Workbench() {
                       <Button variant="outline" disabled={busy} onClick={() => doReturn([...loanSel])}>
                         Return ({loanSel.size})
                       </Button>
-                      <Button variant="outline" disabled={busy} onClick={() => setExtendIds([...loanSel])}>
+                      <Button variant="outline" disabled={busy} onClick={() => openExtendDialog([...loanSel])}>
                         Extend ({loanSel.size})
                       </Button>
                     </div>

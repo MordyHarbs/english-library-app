@@ -5,6 +5,7 @@ import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { addDays, jerusalemToday, fmt } from '../_shared/dates.ts'
+import { markDailyTaskRan, shouldRunDailyTask } from '../_shared/schedule.ts'
 
 const denoRuntime = (globalThis as unknown as {
   Deno: { serve(handler: (req: Request) => Response | Promise<Response>): void }
@@ -23,6 +24,9 @@ denoRuntime.serve(async (req) => {
   if (pf) return pf
   try {
     const db = serviceClient()
+    const schedule = await shouldRunDailyTask(req, db, 'daily_reminders_last_run_date')
+    if (!schedule.shouldRun) return json({ sent: 0, skipped: 0, ...schedule })
+
     const settings = await loadSettings(db)
     const today = jerusalemToday()
     const todayStr = fmt(today)
@@ -55,7 +59,11 @@ denoRuntime.serve(async (req) => {
       skipped += r.skipped
     }
 
-    return json({ sent, skipped })
+    if (schedule.source === 'cron') {
+      await markDailyTaskRan(db, 'daily_reminders_last_run_date', todayStr)
+    }
+
+    return json({ sent, skipped, source: schedule.source, scheduled_time: schedule.scheduled_time })
   } catch (e) {
     console.error('daily-reminders:', e)
     return json({ error: (e as Error).message }, 500)
