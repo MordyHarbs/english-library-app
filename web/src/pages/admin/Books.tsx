@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import imageCompression from 'browser-image-compression'
-import { Plus, Pencil, BookOpen, Trash2 } from 'lucide-react'
+import { Plus, Pencil, BookOpen, Trash2, Link } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { BookDialog } from '@/components/BookDialog'
 import { useBooks, useCategories, type CatalogBook } from '@/lib/queries'
@@ -13,6 +13,7 @@ import { coverUrl } from '@/lib/covers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { callFunction } from '@/lib/functions'
 import {
   Select,
   SelectContent,
@@ -32,6 +33,19 @@ type Draft = Partial<CatalogBook> & { id?: string; categoryName?: string | null 
 const NEW_CATEGORY = '__new__'
 const NO_CATEGORY = '__none__'
 
+interface ImportedGoodreadsBook {
+  title: string
+  author: string | null
+  description: string | null
+  pages: number | null
+  category: string | null
+  cover: {
+    filename: string
+    content_type: string
+    data_base64: string
+  } | null
+}
+
 export default function Books() {
   const { data: books, isLoading } = useBooks()
   const { data: categories } = useCategories()
@@ -45,6 +59,8 @@ export default function Books() {
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [goodreadsUrl, setGoodreadsUrl] = useState('')
+  const [importBusy, setImportBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [openBook, setOpenBook] = useState<string | null>(null)
 
@@ -109,6 +125,42 @@ export default function Books() {
     await supabase.from('books').update({ cover_path: path }).eq('id', bookId)
   }
 
+  function newBookDraft(importUrl = '') {
+    setDraft({ serial_number: nextSerialNumber })
+    setCoverFile(null)
+    setGoodreadsUrl(importUrl)
+  }
+
+  function categoryDraft(category: string | null | undefined) {
+    const name = (category ?? '').trim()
+    if (!name) return { category_id: null, categoryName: null }
+    const existing = categories?.find((c) => c.name.toLowerCase() === name.toLowerCase())
+    return existing ? { category_id: existing.id, categoryName: null } : { category_id: null, categoryName: name }
+  }
+
+  async function importGoodreads() {
+    if (!goodreadsUrl.trim()) return toast.error('Paste a Goodreads link')
+    setImportBusy(true)
+    try {
+      const imported = await callFunction<ImportedGoodreadsBook>('import-goodreads-book', { url: goodreadsUrl.trim() })
+      const nextDraft = draft ?? { serial_number: nextSerialNumber }
+      setDraft({
+        ...nextDraft,
+        title: imported.title || nextDraft.title,
+        author: imported.author ?? nextDraft.author ?? null,
+        description: imported.description ?? nextDraft.description ?? null,
+        pages: imported.pages ?? nextDraft.pages ?? null,
+        ...categoryDraft(imported.category),
+      })
+      if (imported.cover) setCoverFile(fileFromBase64(imported.cover))
+      toast.success('Book details filled in.')
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
   async function save() {
     if (!draft?.title?.trim()) return toast.error('Title is required')
     if (!draft.serial_number || Number(draft.serial_number) < 1) {
@@ -151,7 +203,7 @@ export default function Books() {
     <AdminShell
       title="Books"
       actions={
-        <Button onClick={() => setDraft({ serial_number: nextSerialNumber })}>
+        <Button onClick={() => newBookDraft()}>
           <Plus className="size-4" /> Add book
         </Button>
       }
@@ -217,6 +269,7 @@ export default function Books() {
                   onClick={() => {
                     setDraft({ ...b })
                     setCoverFile(null)
+                    setGoodreadsUrl('')
                   }}
                 >
                   <Pencil className="size-4" />
@@ -242,6 +295,7 @@ export default function Books() {
           if (!o) {
             setDraft(null)
             setCoverFile(null)
+            setGoodreadsUrl('')
           }
         }}
       >
@@ -251,6 +305,21 @@ export default function Books() {
           </DialogHeader>
           {draft && (
             <div className="space-y-3">
+              {!draft.id && (
+                <div className="rounded-lg border bg-secondary/30 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={goodreadsUrl}
+                      onChange={(e) => setGoodreadsUrl(e.target.value)}
+                      placeholder="Goodreads link"
+                      className="min-w-0 flex-1"
+                    />
+                    <Button type="button" variant="outline" disabled={importBusy} onClick={importGoodreads}>
+                      <Link className="size-4" /> {importBusy ? 'Filling...' : 'Fill details'}
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Field label="Title">
                 <Input value={draft.title ?? ''} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
               </Field>
@@ -325,7 +394,6 @@ export default function Books() {
                 />
                 {coverFile && <p className="text-xs text-muted-foreground">{coverFile.name}</p>}
               </Field>
-              {/* Future: a "Get book info" button slots in here (TECH-PLAN §12). */}
             </div>
           )}
           <DialogFooter>
@@ -370,4 +438,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   )
+}
+
+function fileFromBase64(cover: ImportedGoodreadsBook['cover']) {
+  if (!cover) throw new Error('Cover is missing')
+  const binary = atob(cover.data_base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], cover.filename, { type: cover.content_type })
 }
