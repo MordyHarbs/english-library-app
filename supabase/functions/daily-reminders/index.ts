@@ -24,6 +24,7 @@ denoRuntime.serve(async (req) => {
   if (pf) return pf
   try {
     const db = serviceClient()
+    const options = await loadRequestOptions(req)
     const schedule = await shouldRunDailyTask(req, db, 'daily_reminders_last_run_date')
     if (!schedule.shouldRun) return json({ sent: 0, skipped: 0, ...schedule })
 
@@ -33,6 +34,7 @@ denoRuntime.serve(async (req) => {
 
     let sent = 0
     let skipped = 0
+    const would_send: ReminderPreview[] = []
 
     // --- Due soon ---
     if (settings.email_due_soon) {
@@ -42,9 +44,10 @@ denoRuntime.serve(async (req) => {
         .select('id, due_date, member_id, books(title, cover_path), members(name, email)')
         .is('date_returned', null)
         .eq('due_date', target)
-      const r = await dispatch(db, (data ?? []) as LoanRow[], 'due_soon', todayStr, settings)
+      const r = await dispatch(db, (data ?? []) as LoanRow[], 'due_soon', todayStr, settings, options)
       sent += r.sent
       skipped += r.skipped
+      would_send.push(...r.would_send)
     }
 
     // --- Overdue ---
@@ -54,16 +57,25 @@ denoRuntime.serve(async (req) => {
         .select('id, due_date, member_id, books(title, cover_path), members(name, email)')
         .is('date_returned', null)
         .lt('due_date', todayStr)
-      const r = await dispatch(db, (data ?? []) as LoanRow[], 'overdue', todayStr, settings)
+      const r = await dispatch(db, (data ?? []) as LoanRow[], 'overdue', todayStr, settings, options)
       sent += r.sent
       skipped += r.skipped
+      would_send.push(...r.would_send)
     }
 
-    if (schedule.source === 'cron') {
+    if (schedule.source === 'cron' && !options.dry_run && !options.test_recipient) {
       await markDailyTaskRan(db, 'daily_reminders_last_run_date', todayStr)
     }
 
-    return json({ sent, skipped, source: schedule.source, scheduled_time: schedule.scheduled_time })
+    return json({
+      sent,
+      skipped,
+      dry_run: options.dry_run,
+      test_recipient: options.test_recipient,
+      would_send,
+      source: schedule.source,
+      scheduled_time: schedule.scheduled_time,
+    })
   } catch (e) {
     console.error('daily-reminders:', e)
     return json({ error: (e as Error).message }, 500)
@@ -76,6 +88,21 @@ interface Settings {
   email_overdue: boolean
   late_fee_per_week: number
   admin_notification_email: string
+}
+
+interface ReminderOptions {
+  dry_run: boolean
+  test_recipient: string | null
+}
+
+interface ReminderPreview {
+  type: 'due_soon' | 'overdue'
+  intended_recipient: string
+  member: string
+  subject: string
+  due_date: string
+  loan_ids: string[]
+  books: string[]
 }
 
 const esc = (s: string) =>
@@ -96,15 +123,30 @@ async function loadSettings(db: ReturnType<typeof serviceClient>): Promise<Setti
   }
 }
 
+async function loadRequestOptions(req: Request): Promise<ReminderOptions> {
+  try {
+    const body = await req.clone().json()
+    const testRecipient = typeof body?.test_recipient === 'string' ? body.test_recipient.trim() : ''
+    return {
+      dry_run: body?.dry_run === true,
+      test_recipient: testRecipient && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(testRecipient) ? testRecipient : null,
+    }
+  } catch {
+    return { dry_run: false, test_recipient: null }
+  }
+}
+
 async function dispatch(
   db: ReturnType<typeof serviceClient>,
   loans: LoanRow[],
   type: 'due_soon' | 'overdue',
   todayStr: string,
   settings: Settings,
-): Promise<{ sent: number; skipped: number }> {
+  options: ReminderOptions,
+): Promise<{ sent: number; skipped: number; would_send: ReminderPreview[] }> {
   let sent = 0
   let skipped = 0
+  const would_send: ReminderPreview[] = []
 
   // Filter out loans already notified today (dedupe).
   const fresh: LoanRow[] = []
@@ -166,27 +208,46 @@ async function dispatch(
     html += `<p>Thank you,<br>The Library Team</p>`
     html += `<hr style="border: none; border-top: 1px solid #ccc; margin-top: 24px;"><p style="font-size: 12px; color: #888;">This is an automated message sent by the Ayalot Library system.</p>`
 
-    const ok = await sendEmail({
-      to: member.email,
-      bcc: settings.admin_notification_email,
+    const preview = {
+      type,
+      intended_recipient: member.email,
+      member: member.name,
       subject,
-      text: textBody,
-      html,
+      due_date: memberLoans[0].due_date,
+      loan_ids: memberLoans.map((l) => l.id),
+      books: books.map((b) => b.title),
+    }
+    would_send.push(preview)
+
+    if (options.dry_run) continue
+
+    const ok = await sendEmail({
+      to: options.test_recipient ?? member.email,
+      bcc: options.test_recipient ? undefined : settings.admin_notification_email,
+      subject: options.test_recipient ? `[TEST] ${subject}` : subject,
+      text: options.test_recipient
+        ? `TEST ONLY. Intended recipient: ${member.name} <${member.email}>\n\n${textBody}`
+        : textBody,
+      html: options.test_recipient
+        ? `<p><b>TEST ONLY.</b> Intended recipient: ${esc(member.name)} &lt;${esc(member.email)}&gt;</p>${html}`
+        : html,
     })
     if (ok) {
-      for (const l of memberLoans) {
-        await db.from('email_log').insert({
-          type,
-          recipient: member.email,
-          loan_id: l.id,
-          dedupe_key: `${type}:${l.id}:${todayStr}`,
-        })
+      if (!options.test_recipient) {
+        for (const l of memberLoans) {
+          await db.from('email_log').insert({
+            type,
+            recipient: member.email,
+            loan_id: l.id,
+            dedupe_key: `${type}:${l.id}:${todayStr}`,
+          })
+        }
       }
       sent++
     }
   }
 
-  return { sent, skipped }
+  return { sent, skipped, would_send }
 }
 
 function coverUrl(db: ReturnType<typeof serviceClient>, path: string | null | undefined) {
