@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+import { DEFAULT_PUBLIC_SETTINGS, usePublicSettings } from '@/lib/queries'
 import { ScrollToTopButton } from './ScrollToTopButton'
 
 const nav = [
@@ -40,6 +41,8 @@ export function AdminShell({
   children: ReactNode
 }) {
   const { signOut } = useAuth()
+  const { data: publicSettings } = usePublicSettings()
+  const branding = publicSettings ?? DEFAULT_PUBLIC_SETTINGS
   const navigate = useNavigate()
 
   return (
@@ -49,7 +52,7 @@ export function AdminShell({
         <div className="flex items-center gap-2 px-4 py-4">
           <Library className="size-5 text-accent" />
           <Link to="/admin" className="font-display text-lg font-medium tracking-tight">
-            Ayalot Admin
+            {branding.library_name} Admin
           </Link>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 lg:flex-col lg:overflow-visible lg:pb-0">

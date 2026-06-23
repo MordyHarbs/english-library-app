@@ -8,6 +8,7 @@ import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 export interface EmailInput {
   to: string
   bcc?: string
+  fromName?: string
   subject: string
   html: string
   text?: string
@@ -18,6 +19,7 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
   const gmailUser = Deno.env.get('GMAIL_USER')
   const gmailPass = Deno.env.get('GMAIL_APP_PASSWORD')
   const smtpHost = Deno.env.get('SMTP_HOST')
+  const fromName = headerText(input.fromName || Deno.env.get('LIBRARY_NAME') || 'Ayalot Library')
 
   try {
     if (gmailUser && gmailPass) {
@@ -30,7 +32,7 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
         },
       })
       await client.send({
-        from: `Ayalot Library <${gmailUser}>`,
+        from: `${fromName} <${gmailUser}>`,
         to: input.to,
         bcc: input.bcc,
         replyTo: input.replyTo,
@@ -43,11 +45,12 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
     }
 
     if (smtpHost) {
-      const from = gmailUser || Deno.env.get('ADMIN_EMAIL') || 'noreply@ayalot.example'
+      const from = gmailUser || Deno.env.get('ADMIN_EMAIL') || 'noreply@library.example'
       await sendPlain(
         smtpHost,
         Number(Deno.env.get('SMTP_PORT') || '54325'),
         from,
+        fromName,
         input,
       )
       return true
@@ -61,8 +64,12 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
   }
 }
 
+function headerText(value: string) {
+  return value.replace(/[\r\n"]/g, '').trim() || 'Library'
+}
+
 /** Minimal plaintext SMTP (good enough for Mailpit / local testing). */
-async function sendPlain(host: string, port: number, from: string, input: EmailInput) {
+async function sendPlain(host: string, port: number, from: string, fromName: string, input: EmailInput) {
   const conn = await Deno.connect({ hostname: host, port })
   const enc = new TextEncoder()
   const dec = new TextDecoder()
@@ -77,13 +84,13 @@ async function sendPlain(host: string, port: number, from: string, input: EmailI
   }
   try {
     await read() // server greeting
-    await cmd('EHLO ayalot.local')
+    await cmd('EHLO library.local')
     await cmd(`MAIL FROM:<${from}>`)
     await cmd(`RCPT TO:<${input.to}>`)
     if (input.bcc) await cmd(`RCPT TO:<${input.bcc}>`)
     await cmd('DATA')
     const headers = [
-      `From: Ayalot Library <${from}>`,
+      `From: ${fromName} <${from}>`,
       `To: ${input.to}`,
       input.replyTo ? `Reply-To: ${input.replyTo}` : '',
       `Subject: ${input.subject}`,

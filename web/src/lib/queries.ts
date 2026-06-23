@@ -27,6 +27,10 @@ export interface PublicSettings {
   default_book_limit: number
   max_book_limit: number
   loan_duration_days: number
+  library_name: string
+  library_logo_url: string
+  library_icon_url: string
+  contact_phone: string
 }
 
 export interface ActiveAppNotice {
@@ -37,15 +41,25 @@ export interface ActiveAppNotice {
   dismissal_version: number
 }
 
-const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
+export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   default_book_limit: 5,
   max_book_limit: 10,
   loan_duration_days: 14,
+  library_name: 'Ayalot Library',
+  library_logo_url: '/logo.png',
+  library_icon_url: '/favicon.png',
+  contact_phone: '053-520-9283',
 }
 
 function settingNumber(value: unknown, fallback: number) {
   const number = Number(value)
   return Number.isFinite(number) ? number : fallback
+}
+
+function settingString(value: unknown, fallback: string, allowEmpty = false) {
+  const text = String(value ?? fallback).trim()
+  if (allowEmpty && value !== undefined && value !== null) return text
+  return text || fallback
 }
 
 export function useCategories() {
@@ -162,6 +176,14 @@ export function usePublicSettings() {
           out.max_book_limit = settingNumber(row.value, DEFAULT_PUBLIC_SETTINGS.max_book_limit)
         } else if (row.key === 'loan_duration_days') {
           out.loan_duration_days = settingNumber(row.value, DEFAULT_PUBLIC_SETTINGS.loan_duration_days)
+        } else if (row.key === 'library_name') {
+          out.library_name = settingString(row.value, DEFAULT_PUBLIC_SETTINGS.library_name)
+        } else if (row.key === 'library_logo_url') {
+          out.library_logo_url = settingString(row.value, DEFAULT_PUBLIC_SETTINGS.library_logo_url)
+        } else if (row.key === 'library_icon_url') {
+          out.library_icon_url = settingString(row.value, DEFAULT_PUBLIC_SETTINGS.library_icon_url)
+        } else if (row.key === 'contact_phone') {
+          out.contact_phone = settingString(row.value, DEFAULT_PUBLIC_SETTINGS.contact_phone, true)
         }
       }
       return out

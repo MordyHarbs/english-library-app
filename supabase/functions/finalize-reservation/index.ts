@@ -5,6 +5,7 @@ import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { addDays, jerusalemToday, fmt } from '../_shared/dates.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 interface Decision {
   item_id: string
@@ -133,6 +134,7 @@ async function emailSummary(
   const rejected = (items ?? [])
     .filter((i) => i.status === 'rejected')
     .map((i) => i.books)
+  const branding = await loadBranding(db)
 
   let html = `<p>Hi ${esc(res.name)},</p><p>We've reviewed your book request.</p>`
   if (approved.length)
@@ -140,11 +142,12 @@ async function emailSummary(
   if (rejected.length)
     html += `<p><b>Not available right now:</b></p>${bookCards(db, rejected)}`
   if (message?.trim()) html += `<p>${esc(message.trim())}</p>`
-  html += `<p>Thank you!<br>Ayalot Library</p>`
+  html += `<p>Thank you!<br>${esc(branding.libraryName)}</p>`
 
   const ok = await sendEmail({
     to: res.email,
-    subject: 'Update on your Ayalot Library request',
+    fromName: branding.libraryName,
+    subject: `Update on your ${branding.libraryName} request`,
     html,
   })
   if (ok)

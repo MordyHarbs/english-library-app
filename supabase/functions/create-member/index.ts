@@ -3,6 +3,7 @@
 import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 Deno.serve(async (req) => {
   const pf = preflight(req)
@@ -76,30 +77,32 @@ async function sendWelcome(
     .from('settings')
     .select('key, value')
     .in('key', ['site_url', 'default_book_limit', 'loan_duration_days', 'default_extend_days', 'late_fee_per_week'])
+  const branding = await loadBranding(db)
   const map: Record<string, unknown> = {}
   for (const s of settings ?? []) map[s.key] = s.value
-  const siteUrl = String(map.site_url ?? 'http://localhost:5173').replace(/^"|"$/g, '').replace(/\/$/, '')
+  const siteUrl = branding.siteUrl
   const maxBooks = Number(map.default_book_limit ?? 3)
   const durationText = formatDays(Number(map.loan_duration_days ?? 21), false)
   const lateFee = Number(map.late_fee_per_week ?? 5) || 5
   const extendText = formatDays(Number(map.default_extend_days ?? 7), true)
   const displayName = name || 'New Member'
 
-  const text = `Hello ${displayName},\n\nWelcome to our English library! We're excited to have you as a member.\n\nYou can browse our catalog online at ${siteUrl}.\n\nHappy reading!`
+  const text = `Hello ${displayName},\n\nWelcome to ${branding.libraryName}! We're excited to have you as a member.\n\nYou can browse our catalog online at ${siteUrl}.\n\nHappy reading!`
 
   const html = `<b>Hello ${esc(displayName)},<br><br>` +
-    `Welcome to our English library! We're excited to have you as a member.<br><br>` +
-    `You can browse our catalog online at <a href="${siteUrl}">Ayalot Library</a>.</b><br><br><br>` +
+    `Welcome to ${esc(branding.libraryName)}! We're excited to have you as a member.<br><br>` +
+    `You can browse our catalog online at <a href="${siteUrl}">${esc(branding.libraryName)}</a>.</b><br><br><br>` +
     `* You can take up to ${maxBooks} books at a time<br><br>` +
     `* Please return the books within ${durationText}, if it isn't enough time for you - please contact us and you can extend for up to ${extendText} at a time.<br><br>` +
     `* If returned late without contacting us - there will be a charge of ${lateFee} shekel per week.<br><br><br>` +
     `<b>Happy reading!</b><br><br>` +
     `P.S. This is an automatic email. <br><br>` +
-    `<img src="${siteUrl}/logo.png" alt="Ayalot Library Logo" style="max-width:200px;">`
+    `<img src="${branding.logoUrl}" alt="${esc(branding.libraryName)} Logo" style="max-width:200px;">`
 
   const ok = await sendEmail({
     to: email,
-    subject: 'Welcome to the Ayalot Library!',
+    fromName: branding.libraryName,
+    subject: `Welcome to ${branding.libraryName}!`,
     text,
     html,
   })

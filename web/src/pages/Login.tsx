@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { callFunction } from '@/lib/functions'
 import { useAuth } from '@/lib/auth'
+import { DEFAULT_PUBLIC_SETTINGS, usePublicSettings } from '@/lib/queries'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +23,8 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const { session, isAdmin } = useAuth()
+  const { data: publicSettings } = usePublicSettings()
+  const branding = publicSettings ?? DEFAULT_PUBLIC_SETTINGS
   const from = (location.state as { from?: string } | null)?.from
 
   const [step, setStep] = useState<Step>('email')
@@ -141,7 +144,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <img src="/logo.png" alt="Ayalot Library" className="mx-auto mb-1 h-20 w-auto" />
+          <img src={branding.library_logo_url} alt={branding.library_name} className="mx-auto mb-1 h-20 w-auto" />
           <CardDescription>
             Logging in is optional — it just lets you track your books and requests
           </CardDescription>

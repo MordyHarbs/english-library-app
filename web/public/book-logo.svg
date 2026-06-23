@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Book logo</title>
+  <desc id="desc">A simple open book symbol for a library.</desc>
+  <rect width="512" height="512" rx="96" fill="#f8fafc"/>
+  <path d="M256 154c-36-32-82-48-137-48-15 0-27 12-27 27v206c0 15 12 27 27 27 55 0 101 16 137 48 36-32 82-48 137-48 15 0 27-12 27-27V133c0-15-12-27-27-27-55 0-101 16-137 48Z" fill="#2563eb"/>
+  <path d="M256 154v260" stroke="#dbeafe" stroke-width="24" stroke-linecap="round"/>
+  <path d="M134 166c38 2 70 12 96 31M134 226c38 2 70 12 96 31M134 286c38 2 70 12 96 31M378 166c-38 2-70 12-96 31M378 226c-38 2-70 12-96 31M378 286c-38 2-70 12-96 31" stroke="#eff6ff" stroke-width="18" stroke-linecap="round"/>
+</svg>

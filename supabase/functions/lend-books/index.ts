@@ -5,6 +5,7 @@ import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { addDays, jerusalemToday, fmt } from '../_shared/dates.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 interface LendItem {
   book_id: string
@@ -98,11 +99,13 @@ async function emailLent(
     .from('loans')
     .select('books(title, cover_path)')
     .in('id', loanIds)
+  const branding = await loadBranding(db)
   const cards = bookCards(db, (loans ?? []).map((l) => l.books))
 
   const ok = await sendEmail({
     to: member.email,
-    subject: 'Books checked out — Ayalot Library',
+    fromName: branding.libraryName,
+    subject: `Books checked out - ${branding.libraryName}`,
     html: `<p>Hi ${esc(member.name)},</p><p>You've checked out:</p>${cards}<p>Please return by <b>${due}</b>. Enjoy!</p>`,
   })
   if (ok)

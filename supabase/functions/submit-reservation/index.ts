@@ -5,6 +5,7 @@
 import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, userClient } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 interface Body {
   name?: string
@@ -123,8 +124,9 @@ async function sendEmails(
     .in('key', ['admin_notification_email', 'site_url'])
   const map: Record<string, string> = {}
   for (const s of settings ?? []) map[s.key] = String(s.value).replace(/^"|"$/g, '')
-  const adminEmail = map.admin_notification_email || ctx.email
-  const siteUrl = (map.site_url || 'http://localhost:5173').replace(/\/$/, '')
+  const branding = await loadBranding(db)
+  const adminEmail = branding.adminNotificationEmail || map.admin_notification_email || ctx.email
+  const siteUrl = branding.siteUrl
 
   // Book titles + availability for the email.
   const { data: books } = await db
@@ -182,6 +184,7 @@ async function sendEmails(
   const adminOk = await sendEmail({
     to: adminEmail,
     replyTo: ctx.email,
+    fromName: branding.libraryName,
     subject: `Book Hold Request from ${cleanText(ctx.name)}${ctx.isMember ? '' : ' (NEW MEMBER)'}`,
     html: adminHtml,
   })
@@ -201,7 +204,8 @@ async function sendEmails(
     ${!ctx.isMember ? `<p style="color:#666">Want to track this request and your books? <a href="${siteUrl}/login">Log in with your email</a> — totally optional.</p>` : ''}`
   const reqOk = await sendEmail({
     to: ctx.email,
-    subject: 'Your Ayalot Library request',
+    fromName: branding.libraryName,
+    subject: `Your ${branding.libraryName} request`,
     html: reqHtml,
   })
   if (reqOk)

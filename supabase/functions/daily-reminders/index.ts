@@ -6,6 +6,7 @@ import { serviceClient } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { addDays, jerusalemToday, fmt } from '../_shared/dates.ts'
 import { markDailyTaskRan, shouldRunDailyTask } from '../_shared/schedule.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 const denoRuntime = (globalThis as unknown as {
   Deno: { serve(handler: (req: Request) => Response | Promise<Response>): void }
@@ -90,6 +91,8 @@ interface Settings {
   email_overdue: boolean
   late_fee_per_week: number
   admin_notification_email: string
+  library_name: string
+  contact_phone: string
 }
 
 interface ReminderOptions {
@@ -118,12 +121,15 @@ async function loadSettings(db: ReturnType<typeof serviceClient>): Promise<Setti
   const { data } = await db.from('settings').select('key, value')
   const m: Record<string, unknown> = {}
   for (const s of data ?? []) m[s.key] = s.value
+  const branding = await loadBranding(db)
   return {
     reminder_days_before: Number(m.reminder_days_before ?? 2),
     email_due_soon: m.email_due_soon !== false,
     email_overdue: m.email_overdue !== false,
     late_fee_per_week: Number(m.late_fee_per_week ?? 0),
-    admin_notification_email: String(m.admin_notification_email ?? 'ayalotlibrary@gmail.com').replace(/^"|"$/g, ''),
+    admin_notification_email: branding.adminNotificationEmail,
+    library_name: branding.libraryName,
+    contact_phone: branding.contactPhone,
   }
 }
 
@@ -207,7 +213,8 @@ async function dispatch(
     const textIntro = type === 'due_soon'
       ? `This is a friendly reminder that the following book${isMultiple ? 's' : ''} you borrowed ${isMultiple ? 'are' : 'is'} due for return on ${returnDateStr}:`
       : `This is a friendly reminder that the following book${isMultiple ? 's' : ''} you borrowed ${isMultiple ? 'were' : 'was'} due for return on ${returnDateStr}:`
-    const textBody = `Hello ${member.name},\n\n${textIntro}\n\n${books.map((b) => `- "${b.title}"`).join('\n')}\n\nIf you need more time, please reply to this email or contact us at 053-520-9283 to request an extension before the due date — this way we can avoid any late fees (5 NIS per week, we start charging after the first week).\n\nThank you,\nThe Library Team\n\n---\nThis is an automated message sent by the Ayalot Library system.`
+    const extensionText = extensionRequestText(settings)
+    const textBody = `Hello ${member.name},\n\n${textIntro}\n\n${books.map((b) => `- "${b.title}"`).join('\n')}\n\n${extensionText}\n\nThank you,\nThe Library Team\n\n---\nThis is an automated message sent by the ${settings.library_name} system.`
 
     let html = `<p>Hello ${esc(member.name)},</p><p>${textIntro.replace(returnDateStr, `<b>${esc(returnDateStr)}</b>`)}</p>`
     html += `<div style="text-align: center; margin: 20px 0;">`
@@ -222,11 +229,11 @@ async function dispatch(
       html += `</div>`
     }
     html += `</div>`
-    html += `<p style="margin-top: 20px;">If you need more time, please <b>reply to this email</b> or contact us at <b>053-520-9283</b> to request an extension before the due date — this way we can avoid any late fees (5 NIS per week, we start charging after the first week).</p>`
+    html += `<p style="margin-top: 20px;">${extensionRequestHtml(settings)}</p>`
     if (type === 'overdue' && settings.late_fee_per_week > 0)
       html += `<p>A late fee of ₪${settings.late_fee_per_week} per week may apply.</p>`
     html += `<p>Thank you,<br>The Library Team</p>`
-    html += `<hr style="border: none; border-top: 1px solid #ccc; margin-top: 24px;"><p style="font-size: 12px; color: #888;">This is an automated message sent by the Ayalot Library system.</p>`
+    html += `<hr style="border: none; border-top: 1px solid #ccc; margin-top: 24px;"><p style="font-size: 12px; color: #888;">This is an automated message sent by the ${esc(settings.library_name)} system.</p>`
 
     const preview = {
       type,
@@ -244,6 +251,7 @@ async function dispatch(
     const ok = await sendEmail({
       to: options.test_recipient ?? member.email,
       bcc: options.test_recipient ? undefined : settings.admin_notification_email,
+      fromName: settings.library_name,
       subject: options.test_recipient ? `[TEST] ${subject}` : subject,
       text: options.test_recipient
         ? `TEST ONLY. Intended recipient: ${member.name} <${member.email}>\n\n${textBody}`
@@ -268,6 +276,20 @@ async function dispatch(
   }
 
   return { sent, skipped, would_send }
+}
+
+function extensionRequestText(settings: Settings) {
+  const contact = settings.contact_phone
+    ? ` or contact us at ${settings.contact_phone}`
+    : ''
+  return `If you need more time, please reply to this email${contact} to request an extension before the due date — this way we can avoid any late fees (5 NIS per week, we start charging after the first week).`
+}
+
+function extensionRequestHtml(settings: Settings) {
+  const contact = settings.contact_phone
+    ? ` or contact us at <b>${esc(settings.contact_phone)}</b>`
+    : ''
+  return `If you need more time, please <b>reply to this email</b>${contact} to request an extension before the due date — this way we can avoid any late fees (5 NIS per week, we start charging after the first week).`
 }
 
 function coverUrl(db: ReturnType<typeof serviceClient>, path: string | null | undefined) {

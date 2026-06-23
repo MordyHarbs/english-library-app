@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useActiveAppNotices } from '@/lib/queries'
+import { DEFAULT_PUBLIC_SETTINGS, useActiveAppNotices, usePublicSettings } from '@/lib/queries'
 // Public pages load eagerly (the landing experience).
 import Catalog from '@/pages/Catalog'
 import BookDetail from '@/pages/BookDetail'
@@ -165,6 +165,24 @@ function AppNotification() {
   )
 }
 
+function BrandingEffects() {
+  const { data: publicSettings } = usePublicSettings()
+  const branding = publicSettings ?? DEFAULT_PUBLIC_SETTINGS
+
+  useEffect(() => {
+    document.title = branding.library_name
+    let icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+    if (!icon) {
+      icon = document.createElement('link')
+      icon.rel = 'icon'
+      document.head.appendChild(icon)
+    }
+    icon.href = branding.library_icon_url
+  }, [branding.library_icon_url, branding.library_name])
+
+  return null
+}
+
 export default function App() {
   return (
     <Suspense
@@ -175,6 +193,7 @@ export default function App() {
       }
     >
     <>
+      <BrandingEffects />
       <AppNotification />
       <Routes>
         {/* Public */}

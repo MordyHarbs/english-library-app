@@ -4,10 +4,10 @@ import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { fmt, jerusalemToday } from '../_shared/dates.ts'
 import { markDailyTaskRan, shouldRunDailyTask } from '../_shared/schedule.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
-const ROOT_FOLDER_NAME = 'Ayalot Library Backups'
 const PAGE_SIZE = 1000
 const COVER_BUNDLE_LIMIT_BYTES = 4 * 1024 * 1024
 
@@ -56,13 +56,15 @@ denoRuntime.serve(async (req) => {
     const db = serviceClient()
     const schedule = await shouldRunDailyTask(req, db, 'daily_backup_last_run_date')
     if (!schedule.shouldRun) return json({ ok: true, skipped: true, ...schedule })
+    const branding = await loadBranding(db)
+    const rootFolderName = branding.backupFolderName
 
     const accessToken = await getDriveAccessToken()
     const now = new Date()
     const day = fmt(jerusalemToday())
     const time = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').replace('Z', 'Z')
 
-    const root = await findOrCreateFolder(accessToken, ROOT_FOLDER_NAME, null)
+    const root = await findOrCreateFolder(accessToken, rootFolderName, null)
     const yearFolder = await findOrCreateFolder(accessToken, day.slice(0, 4), root.id)
     const monthFolder = await findOrCreateFolder(accessToken, day.slice(5, 7), yearFolder.id)
     const dayFolder = await findOrCreateFolder(accessToken, day, monthFolder.id)
@@ -84,7 +86,7 @@ denoRuntime.serve(async (req) => {
 
     const manifest = {
       generated_at: now.toISOString(),
-      backup_path: `${ROOT_FOLDER_NAME}/${day.slice(0, 4)}/${day.slice(5, 7)}/${day}/${time}`,
+      backup_path: `${rootFolderName}/${day.slice(0, 4)}/${day.slice(5, 7)}/${day}/${time}`,
       tables: tableResults,
       covers,
     }

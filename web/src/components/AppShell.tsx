@@ -3,11 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingBag, UserRound, LayoutDashboard } from 'lucide-react'
 import { useCart } from '@/lib/cart'
 import { useAuth } from '@/lib/auth'
+import { DEFAULT_PUBLIC_SETTINGS, usePublicSettings } from '@/lib/queries'
 import { ScrollToTopButton } from './ScrollToTopButton'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { count } = useCart()
   const { session, isAdmin } = useAuth()
+  const { data: publicSettings } = usePublicSettings()
+  const branding = publicSettings ?? DEFAULT_PUBLIC_SETTINGS
   const navigate = useNavigate()
 
   return (
@@ -15,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-20 w-full max-w-6xl items-center gap-3 px-4">
           <Link to="/" className="flex items-center">
-            <img src="/logo.png" alt="Ayalot Library" className="h-16 w-auto" />
+            <img src={branding.library_logo_url} alt={branding.library_name} className="h-16 w-auto" />
           </Link>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -65,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
 
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        Ayalot Library
+        {branding.library_name}
       </footer>
       <ScrollToTopButton />
     </div>
