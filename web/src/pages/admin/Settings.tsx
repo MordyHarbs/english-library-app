@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Bell, BookOpen, Clock, Database, Mail, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bell, BookOpen, Clock, Database, Image, Mail, Pencil, Plus, Trash2 } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { useAppNotices, useSettings, type AppNotice } from '@/lib/manage'
 import { supabase } from '@/lib/supabase'
@@ -22,6 +22,11 @@ const META: Record<string, { label: string; help?: string }> = {
   daily_tasks_time: { label: 'Daily run time', help: 'Jerusalem time for Drive backups and reminder email checks.' },
   admin_notification_email: { label: 'Admin email', help: 'Where new-request alerts are sent.' },
   site_url: { label: 'Site URL', help: 'Base address used in email links.' },
+  library_name: { label: 'Library name', help: 'Shown in the app, print catalog, and email subjects.' },
+  library_logo_url: { label: 'Logo URL', help: 'Use a public path like /book-logo.svg or a full image URL.' },
+  library_icon_url: { label: 'Icon URL', help: 'Browser tab icon, usually /book-icon.svg.' },
+  contact_phone: { label: 'Contact phone', help: 'Optional phone number for reminder emails.' },
+  backup_folder_name: { label: 'Backup folder', help: 'Google Drive root folder for this library.' },
   email_member_on_finalize: { label: 'On request finalized' },
   email_member_on_lend: { label: 'On books lent' },
   email_member_on_return: { label: 'On books returned' },
@@ -39,6 +44,14 @@ const LENDING_KEYS = [
   'reminder_days_before',
   'admin_notification_email',
   'site_url',
+]
+
+const BRANDING_KEYS = [
+  'library_name',
+  'library_logo_url',
+  'library_icon_url',
+  'contact_phone',
+  'backup_folder_name',
 ]
 
 const SCHEDULE_KEYS = ['daily_tasks_time']
@@ -112,6 +125,7 @@ export default function Settings() {
   const noticeRows = notices ?? []
   const nextNoticeSort = Math.max(0, ...noticeRows.map((notice) => notice.sort_order)) + 10
   const lendingRows = rows.filter((setting) => LENDING_KEYS.includes(setting.key))
+  const brandingRows = rows.filter((setting) => BRANDING_KEYS.includes(setting.key))
   const scheduleRows = rows.filter((setting) => SCHEDULE_KEYS.includes(setting.key))
   const emailRows = rows.filter(
     (setting) =>
@@ -391,6 +405,32 @@ export default function Settings() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section className="overflow-hidden rounded-xl border bg-card">
+            <header className="flex items-center gap-2 border-b bg-secondary/40 px-5 py-3">
+              <Image className="size-4 text-accent" />
+              <h2 className="font-medium">Library profile</h2>
+            </header>
+            <div className="divide-y">
+              {brandingRows.map((setting) => {
+                const meta = META[setting.key] ?? { label: setting.key }
+                return (
+                  <div key={setting.key} className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{meta.label}</p>
+                      {meta.help && <p className="text-xs text-muted-foreground">{meta.help}</p>}
+                    </div>
+                    <Input
+                      type="text"
+                      value={String(draft[setting.key] ?? setting.value ?? '')}
+                      onChange={(e) => setDraft({ ...draft, [setting.key]: e.target.value })}
+                      className="w-full sm:w-80"
+                    />
+                  </div>
+                )
+              })}
+            </div>
           </section>
 
           <section className="overflow-hidden rounded-xl border bg-card">

@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Printer, ArrowLeft } from 'lucide-react'
-import { useBooks, useCategories } from '@/lib/queries'
+import { DEFAULT_PUBLIC_SETTINGS, useBooks, useCategories, usePublicSettings } from '@/lib/queries'
 import { Button } from '@/components/ui/button'
 
 export default function CatalogPrint() {
   const { data: books } = useBooks()
   const { data: categories } = useCategories()
+  const { data: publicSettings } = usePublicSettings()
+  const branding = publicSettings ?? DEFAULT_PUBLIC_SETTINGS
 
   const grouped = useMemo(() => {
     const byCat = new Map<string, typeof books>()
@@ -36,7 +38,7 @@ export default function CatalogPrint() {
       </div>
 
       <header className="mb-8 text-center">
-        <h1 className="font-display text-3xl font-medium">Ayalot Library</h1>
+        <h1 className="font-display text-3xl font-medium">{branding.library_name}</h1>
         <p className="text-sm text-muted-foreground">Catalog</p>
       </header>
 

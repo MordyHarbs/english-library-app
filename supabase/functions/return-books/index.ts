@@ -4,6 +4,7 @@ import { preflight, json } from '../_shared/cors.ts'
 import { serviceClient, requireAdmin } from '../_shared/db.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { jerusalemToday, fmt } from '../_shared/dates.ts'
+import { loadBranding } from '../_shared/branding.ts'
 
 Deno.serve(async (req) => {
   const pf = preflight(req)
@@ -81,6 +82,7 @@ async function emailReturned(
   for (const r of returned) {
     byMember.set(r.member_id, [...(byMember.get(r.member_id) ?? []), r.books])
   }
+  const branding = await loadBranding(db)
   for (const [memberId, books] of byMember) {
     const { data: m } = await db
       .from('members')
@@ -90,7 +92,8 @@ async function emailReturned(
     if (!m) continue
     await sendEmail({
       to: m.email,
-      subject: 'Books returned — Ayalot Library',
+      fromName: branding.libraryName,
+      subject: `Books returned - ${branding.libraryName}`,
       html: `<p>Hi ${esc(m.name)},</p><p>We've checked these back in:</p>${bookCards(db, books)}<p>Thank you!</p>`,
     })
   }
