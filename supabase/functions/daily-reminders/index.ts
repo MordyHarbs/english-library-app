@@ -29,7 +29,7 @@ denoRuntime.serve(async (req) => {
     if (!schedule.shouldRun) return json({ sent: 0, skipped: 0, ...schedule })
 
     const settings = await loadSettings(db)
-    const today = jerusalemToday()
+    const today = options.test_today ?? jerusalemToday()
     const todayStr = fmt(today)
 
     let sent = 0
@@ -51,7 +51,7 @@ denoRuntime.serve(async (req) => {
     }
 
     // --- Overdue ---
-    if (settings.email_overdue) {
+    if (settings.email_overdue || options.force_overdue) {
       const { data } = await db
         .from('loans')
         .select('id, due_date, member_id, books(title, cover_path), members(name, email)')
@@ -72,6 +72,8 @@ denoRuntime.serve(async (req) => {
       skipped,
       dry_run: options.dry_run,
       test_recipient: options.test_recipient,
+      test_today: options.test_today ? todayStr : null,
+      force_overdue: options.force_overdue,
       would_send,
       source: schedule.source,
       scheduled_time: schedule.scheduled_time,
@@ -93,6 +95,8 @@ interface Settings {
 interface ReminderOptions {
   dry_run: boolean
   test_recipient: string | null
+  test_today: Date | null
+  force_overdue: boolean
 }
 
 interface ReminderPreview {
@@ -127,13 +131,24 @@ async function loadRequestOptions(req: Request): Promise<ReminderOptions> {
   try {
     const body = await req.clone().json()
     const testRecipient = typeof body?.test_recipient === 'string' ? body.test_recipient.trim() : ''
+    const test_recipient = testRecipient && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(testRecipient) ? testRecipient : null
+    const dry_run = body?.dry_run === true
     return {
-      dry_run: body?.dry_run === true,
-      test_recipient: testRecipient && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(testRecipient) ? testRecipient : null,
+      dry_run,
+      test_recipient,
+      test_today: dry_run || test_recipient ? parseTestDate(body?.test_today) : null,
+      force_overdue: (dry_run || test_recipient) && body?.force_overdue === true,
     }
   } catch {
-    return { dry_run: false, test_recipient: null }
+    return { dry_run: false, test_recipient: null, test_today: null, force_overdue: false }
   }
+}
+
+function parseTestDate(value: unknown) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return fmt(date) === value ? date : null
 }
 
 async function dispatch(
@@ -148,9 +163,14 @@ async function dispatch(
   let skipped = 0
   const would_send: ReminderPreview[] = []
 
-  // Filter out loans already notified today (dedupe).
+  // Filter out loans already notified today (dedupe) only for real member sends.
+  // Test and preview calls should still be usable after the daily job ran.
   const fresh: LoanRow[] = []
   for (const l of loans) {
+    if (options.dry_run || options.test_recipient) {
+      fresh.push(l)
+      continue
+    }
     const key = `${type}:${l.id}:${todayStr}`
     const { data: exists } = await db
       .from('email_log')
