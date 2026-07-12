@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 
 type Draft = Partial<CatalogBook> & { id?: string; categoryName?: string | null }
+type BookSort = 'title' | 'author' | 'serial_number'
 const NEW_CATEGORY = '__new__'
 const NO_CATEGORY = '__none__'
 
@@ -57,6 +58,7 @@ export default function Books() {
   )
   const [outInfo, setOutInfo] = useState<{ title: string; member: string; due: string } | null>(null)
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<BookSort>('title')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverRemoved, setCoverRemoved] = useState(false)
@@ -98,10 +100,19 @@ export default function Books() {
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return (books ?? []).filter(
-      (b) => !q || `${b.title} ${b.author ?? ''}`.toLowerCase().includes(q),
+    const filtered = (books ?? []).filter(
+      (b) => !q || `${b.title} ${b.author ?? ''} ${b.serial_number}`.toLowerCase().includes(q),
     )
-  }, [books, search])
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'serial_number') return a.serial_number - b.serial_number
+      const first = sortBy === 'author' ? (a.author ?? '') : a.title
+      const second = sortBy === 'author' ? (b.author ?? '') : b.title
+      return first.localeCompare(second, undefined, { sensitivity: 'base', numeric: true })
+        || a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true })
+        || a.serial_number - b.serial_number
+    })
+  }, [books, search, sortBy])
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['books'] })
@@ -233,12 +244,24 @@ export default function Books() {
         </Button>
       }
     >
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search books…"
-        className="mb-4 sm:max-w-xs"
-      />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by title, author, or serial number…"
+          className="sm:max-w-sm"
+        />
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as BookSort)}>
+          <SelectTrigger className="sm:w-48" aria-label="Sort books">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="title">Sort by title</SelectItem>
+            <SelectItem value="author">Sort by author</SelectItem>
+            <SelectItem value="serial_number">Sort by serial number</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {isLoading ? (
         <p className="py-12 text-center text-muted-foreground">Loading…</p>
