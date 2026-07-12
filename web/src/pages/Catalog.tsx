@@ -26,7 +26,8 @@ export default function Catalog() {
   const toggleCat = (id: string) =>
     setCats((s) => {
       const n = new Set(s)
-      n.has(id) ? n.delete(id) : n.add(id)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
       return n
     })
 
@@ -41,7 +42,7 @@ export default function Catalog() {
         if (avail === 'out' && isAvail) return false
       }
       if (q) {
-        const hay = `${b.title} ${b.author ?? ''}`.toLowerCase()
+        const hay = `${b.title} ${b.author ?? ''} ${b.serial_number}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
@@ -68,7 +69,7 @@ export default function Catalog() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or author…"
+            placeholder="Search by title, author, or serial number…"
             className="pl-9"
           />
         </div>
