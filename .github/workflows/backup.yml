@@ -10,12 +10,17 @@ on:
 jobs:
   dump:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
+      - name: Validate secrets
+        run: |
+          test -n "$SUPABASE_DB_URL" || { echo "::error::Missing Actions secret SUPABASE_DB_URL"; exit 1; }
       - uses: supabase/setup-cli@v1
         with:
           version: latest
       - name: Dump database
-        run: supabase db dump --db-url "${{ secrets.SUPABASE_DB_URL }}" -f backup.sql
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" -f backup.sql
       - uses: actions/upload-artifact@v4
         with:
           name: db-backup-${{ github.run_id }}

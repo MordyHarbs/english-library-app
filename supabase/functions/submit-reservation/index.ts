@@ -127,6 +127,7 @@ async function sendEmails(
   const branding = await loadBranding(db)
   const adminEmail = branding.adminNotificationEmail || map.admin_notification_email || ctx.email
   const siteUrl = branding.siteUrl
+  const adminUrl = `${siteUrl}/admin/reservations/${reservationId}`
 
   // Book titles + availability for the email.
   const { data: books } = await db
@@ -179,6 +180,11 @@ async function sendEmails(
     <p><b>Books requested (${ctx.bookIds.length}):</b></p>
     ${bookCards}
     ${ctx.body.comments ? `<p><b>Notes from requester:</b><br>${esc(ctx.body.comments)}</p>` : ''}
+    <p style="margin: 24px 0;">
+      <a href="${adminUrl}" style="background: #1f2937; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none;">
+        Open this request in the admin
+      </a>
+    </p>
     <hr style="border: none; border-top: 1px solid #ccc; margin-top: 24px;">
     <p style="color: #888; font-size: 12px;">Reply directly to this email to confirm the hold with the requester.</p>`
   const adminOk = await sendEmail({

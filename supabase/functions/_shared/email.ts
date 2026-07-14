@@ -20,6 +20,7 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
   const gmailPass = Deno.env.get('GMAIL_APP_PASSWORD')
   const smtpHost = Deno.env.get('SMTP_HOST')
   const fromName = headerText(input.fromName || Deno.env.get('LIBRARY_NAME') || 'Ayalot Library')
+  const html = input.html.trim()
 
   try {
     if (gmailUser && gmailPass) {
@@ -38,7 +39,7 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
         replyTo: input.replyTo,
         subject: input.subject,
         content: input.text ?? input.subject,
-        html: input.html,
+        html,
       })
       await client.close()
       return true
@@ -100,7 +101,7 @@ async function sendPlain(host: string, port: number, from: string, fromName: str
       .filter(Boolean)
       .join('\r\n')
     // Dot-stuff any lines beginning with '.' per RFC 5321.
-    const body = input.html.replace(/\r?\n/g, '\r\n').replace(/\r\n\./g, '\r\n..')
+    const body = input.html.trim().replace(/\r?\n/g, '\r\n').replace(/\r\n\./g, '\r\n..')
     await cmd(`${headers}\r\n\r\n${body}\r\n.`)
     await cmd('QUIT')
   } finally {
