@@ -204,10 +204,10 @@ async function sendEmails(
   // --- Requester confirmation ---
   const reqHtml = `
     <p>Hi ${esc(ctx.name)},</p>
-    <p>We received your request for:</p>
+    <p>We received your request for the following books. The library team will review your request and email you to confirm pickup:</p>
     ${bookCards}
-    <p>The library will review your request and email you to confirm pickup.</p>
-    ${!ctx.isMember ? `<p style="color:#666">Want to track this request and your books? <a href="${siteUrl}/login">Log in with your email</a> — totally optional.</p>` : ''}`
+    ${!ctx.isMember ? `<p style="color:#666">Want to track this request and your books? <a href="${siteUrl}/login">Log in with your email</a> — totally optional.</p>` : ''}
+    <p>Thank you!<br>${esc(branding.libraryName)}</p>`
   const reqOk = await sendEmail({
     to: ctx.email,
     fromName: branding.libraryName,

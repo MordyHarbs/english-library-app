@@ -214,7 +214,7 @@ async function dispatch(
       ? `This is a friendly reminder that the following book${isMultiple ? 's' : ''} you borrowed ${isMultiple ? 'are' : 'is'} due for return on ${returnDateStr}:`
       : `This is a friendly reminder that the following book${isMultiple ? 's' : ''} you borrowed ${isMultiple ? 'were' : 'was'} due for return on ${returnDateStr}:`
     const extensionText = extensionRequestText(settings)
-    const textBody = `Hello ${member.name},\n\n${textIntro}\n\n${books.map((b) => `- "${b.title}"`).join('\n')}\n\n${extensionText}\n\nThank you,\nThe Library Team\n\n---\nThis is an automated message sent by the ${settings.library_name} system.`
+    const textBody = `Hello ${member.name},\n\n${textIntro}\n\n${books.map((b) => `- "${b.title}"`).join('\n')}\n\n${extensionText}\n\nThank you,\n${settings.library_name}\n\n---\nThis is an automated message sent by the ${settings.library_name} system.`
 
     let html = `<p>Hello ${esc(member.name)},</p><p>${textIntro.replace(returnDateStr, `<b>${esc(returnDateStr)}</b>`)}</p>`
     html += `<div style="text-align: center; margin: 20px 0;">`
@@ -232,7 +232,7 @@ async function dispatch(
     html += `<p style="margin-top: 20px;">${extensionRequestHtml(settings)}</p>`
     if (type === 'overdue' && settings.late_fee_per_week > 0)
       html += `<p>A late fee of ₪${settings.late_fee_per_week} per week may apply.</p>`
-    html += `<p>Thank you,<br>The Library Team</p>`
+    html += `<p>Thank you,<br>${esc(settings.library_name)}</p>`
     html += `<hr style="border: none; border-top: 1px solid #ccc; margin-top: 24px;"><p style="font-size: 12px; color: #888;">This is an automated message sent by the ${esc(settings.library_name)} system.</p>`
 
     const preview = {

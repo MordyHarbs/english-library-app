@@ -106,7 +106,7 @@ async function emailLent(
     to: member.email,
     fromName: branding.libraryName,
     subject: `Books checked out - ${branding.libraryName}`,
-    html: `<p>Hi ${esc(member.name)},</p><p>You've checked out:</p>${cards}<p>Please return by <b>${due}</b>. Enjoy!</p>`,
+    html: `<p>Hi ${esc(member.name)},</p><p>You've checked out the following books. Please return them by <b>${esc(due)}</b>:</p>${cards}<p>Enjoy!<br>${esc(branding.libraryName)}</p>`,
   })
   if (ok)
     await db
