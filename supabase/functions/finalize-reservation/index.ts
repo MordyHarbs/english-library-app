@@ -137,11 +137,11 @@ async function emailSummary(
   const branding = await loadBranding(db)
 
   let html = `<p>Hi ${esc(res.name)},</p><p>We've reviewed your book request.</p>`
+  if (message?.trim()) html += `<p>${esc(message.trim())}</p>`
   if (approved.length)
     html += `<p><b>Ready for pickup:</b></p>${bookCards(db, approved)}`
   if (rejected.length)
     html += `<p><b>Not available right now:</b></p>${bookCards(db, rejected)}`
-  if (message?.trim()) html += `<p>${esc(message.trim())}</p>`
   html += `<p>Thank you!<br>${esc(branding.libraryName)}</p>`
 
   const ok = await sendEmail({

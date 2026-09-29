@@ -68,6 +68,32 @@ npx supabase secrets set SITE_URL='https://<your-site>.netlify.app'
 ```
 And in Dashboard → SQL editor: `update settings set value = '"https://<your-site>.netlify.app"' where key = 'site_url';`
 
+### Deploying a second, differently-branded library from this same repo
+This codebase supports running more than one library off one GitHub repo, each as
+its own fully isolated Netlify site + Supabase project (own database, own Gmail
+sender, own cron). To add one:
+- Create a new Supabase project and repeat steps 1–3 and 7–8 against it.
+- In Netlify, `netlify init` a **second, separate site** linked to the same repo
+  (or add a second site from the dashboard → Import an existing project).
+- Set that site's env vars: the usual `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
+  for its own Supabase project, plus branding overrides so the correct name/icon
+  render on first paint instead of flashing "Ayalot Library" while the runtime
+  settings fetch is in flight:
+  ```bash
+  netlify env:set VITE_LIBRARY_NAME "Kiryat Sefer Kids Library"
+  # Use the same Supabase Storage URLs already set as library_icon_url /
+  # library_logo_url in that project's settings table (upload a custom logo via
+  # Admin -> Settings first if you haven't) — no need to commit local image files.
+  netlify env:set VITE_LIBRARY_ICON_URL "https://<PROJECT_REF>.supabase.co/storage/v1/object/public/covers/<icon-file>.png"
+  netlify env:set VITE_LIBRARY_LOGO_URL "https://<PROJECT_REF>.supabase.co/storage/v1/object/public/covers/<logo-file>.png"
+  netlify env:set VITE_CONTACT_PHONE "<their phone>"        # optional
+  ```
+  These only set the build-time default shown before data loads; they should exactly
+  match the same values (`library_name`, `library_logo_url`, `library_icon_url`,
+  `contact_phone`) already stored in that project's `settings` table (set via
+  Admin → Settings, or a SQL snippet like `supabase/migrations/20260623000019_library_branding.sql`),
+  so the pre-fetch default and the loaded data agree and nothing visibly changes.
+
 ## 6. GitHub secrets (for the Actions in .github/workflows)
 Repo → Settings → Secrets and variables → Actions → add:
 - `SUPABASE_URL` = `https://<PROJECT_REF>.supabase.co`

@@ -94,7 +94,7 @@ async function emailReturned(
       to: m.email,
       fromName: branding.libraryName,
       subject: `Books returned - ${branding.libraryName}`,
-      html: `<p>Hi ${esc(m.name)},</p><p>We've checked these back in:</p>${bookCards(db, books)}<p>Thank you!</p>`,
+      html: `<p>Hi ${esc(m.name)},</p><p>We've checked these back in:</p>${bookCards(db, books)}<p>Thank you!<br>${esc(branding.libraryName)}</p>`,
     })
   }
 }

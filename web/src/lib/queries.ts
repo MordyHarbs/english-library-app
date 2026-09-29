@@ -45,10 +45,10 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   default_book_limit: 5,
   max_book_limit: 10,
   loan_duration_days: 14,
-  library_name: 'Ayalot Library',
-  library_logo_url: '/logo.png',
-  library_icon_url: '/favicon.png',
-  contact_phone: '053-520-9283',
+  library_name: import.meta.env.VITE_LIBRARY_NAME || 'Ayalot Library',
+  library_logo_url: import.meta.env.VITE_LIBRARY_LOGO_URL || '/logo.png',
+  library_icon_url: import.meta.env.VITE_LIBRARY_ICON_URL || '/favicon.png',
+  contact_phone: import.meta.env.VITE_CONTACT_PHONE || '053-520-9283',
 }
 
 function settingNumber(value: unknown, fallback: number) {
