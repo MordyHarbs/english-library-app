@@ -21,6 +21,7 @@ export interface CatalogBook {
 export interface Availability {
   is_available: boolean
   expected_return: string | null
+  is_reserved?: boolean
 }
 
 export interface PublicSettings {
@@ -144,7 +145,7 @@ export function useAvailability() {
     queryFn: async (): Promise<Record<string, Availability>> => {
       const { data, error } = await supabase
         .from('book_availability')
-        .select('book_id, is_available, expected_return')
+        .select('book_id, is_available, expected_return, is_reserved')
       if (error) throw error
       const map: Record<string, Availability> = {}
       for (const row of data ?? []) {
@@ -152,6 +153,7 @@ export function useAvailability() {
           map[row.book_id] = {
             is_available: row.is_available ?? true,
             expected_return: row.expected_return,
+            is_reserved: row.is_reserved ?? false,
           }
         }
       }

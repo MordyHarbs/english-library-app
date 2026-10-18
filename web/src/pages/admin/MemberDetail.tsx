@@ -9,8 +9,9 @@ import { supabase } from '@/lib/supabase'
 import { callFunction } from '@/lib/functions'
 import { useSettings } from '@/lib/manage'
 import { useBooks } from '@/lib/queries'
-import { fmtDate, isOverdue } from '@/lib/format'
+import { fmtDate, isOverdue, todayStr } from '@/lib/format'
 import { DEFAULT_EXTEND_DAYS, defaultExtendDays, dueDateAfterDays } from '@/lib/settings'
+import { LendDateField } from '@/components/LendDateField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -97,6 +98,7 @@ export default function MemberDetail() {
 
   const [busy, setBusy] = useState(false)
   const [bookSearch, setBookSearch] = useState('')
+  const [lendDate, setLendDate] = useState(todayStr())
   const [toLend, setToLend] = useState<{ id: string; title: string }[]>([])
   const [extendLoan, setExtendLoan] = useState<MemberLoan | null>(null)
   const [newDue, setNewDue] = useState(dueDateAfterDays(undefined, DEFAULT_EXTEND_DAYS))
@@ -215,6 +217,7 @@ export default function MemberDetail() {
       const res = await callFunction<{ failed: unknown[] }>('lend-books', {
         member_id: id,
         items: toLend.map((t) => ({ book_id: t.id })),
+        date_given: lendDate,
       })
       const failed = res.failed?.length ?? 0
       toast.success(`Lent ${toLend.length - failed} book(s).`)
@@ -326,6 +329,7 @@ export default function MemberDetail() {
                     </span>
                   ))}
                 </div>
+                <LendDateField value={lendDate} onChange={setLendDate} />
                 <Button className="mt-3" disabled={busy} onClick={lend}>
                   Lend {toLend.length} book(s)
                 </Button>

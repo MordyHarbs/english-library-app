@@ -6,7 +6,7 @@ import { AdminShell } from '@/components/AdminShell'
 import { useMembers, useMemberWorkbench, useOpenLoans, useSettings, type Member } from '@/lib/manage'
 import { useBooks } from '@/lib/queries'
 import { callFunction } from '@/lib/functions'
-import { fmtDate, isOverdue } from '@/lib/format'
+import { fmtDate, isOverdue, todayStr } from '@/lib/format'
 import { DEFAULT_EXTEND_DAYS, defaultExtendDays, dueDateAfterDays } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { LendDateField } from '@/components/LendDateField'
 import { cn } from '@/lib/utils'
 
 interface LendBooksResult {
@@ -42,6 +43,7 @@ export default function Workbench() {
   const [loanSel, setLoanSel] = useState<Set<string>>(new Set())
   const { data: allBooks } = useBooks()
   const [bookSearch, setBookSearch] = useState('')
+  const [lendDate, setLendDate] = useState(todayStr())
   const [adHoc, setAdHoc] = useState<{ id: string; title: string }[]>([])
 
   // --- By book ---
@@ -122,7 +124,7 @@ export default function Workbench() {
   async function lendItems(items: { book_id: string; reservation_item_id?: string | null }[], ok: string) {
     setBusy(true)
     try {
-      const res = await callFunction<LendBooksResult>('lend-books', { member_id: member!.id, items })
+      const res = await callFunction<LendBooksResult>('lend-books', { member_id: member!.id, items, date_given: lendDate })
       const failed = res.failed ?? []
       const lent = res.loan_ids?.length ?? items.length - failed.length
       if (lent > 0) toast.success(lent === items.length ? ok : `Lent ${lent} of ${items.length} book(s).`)
@@ -325,8 +327,9 @@ export default function Workbench() {
                   ))}
                 </div>
               )}
+              <LendDateField value={lendDate} onChange={setLendDate} />
               <Button className="mt-3" disabled={busy || adHoc.length === 0} onClick={lendAdHoc}>
-                Lend {adHoc.length || ''} book(s) now
+                Lend {adHoc.length || ''} book(s){lendDate > todayStr() ? ` on ${fmtDate(lendDate)}` : ' now'}
               </Button>
             </section>
 
@@ -354,6 +357,7 @@ export default function Workbench() {
                       ))}
                     </div>
                   )}
+                  <LendDateField value={lendDate} onChange={setLendDate} />
                   <Button className="mt-3" disabled={busy || holdSel.size === 0} onClick={lendHolds}>
                     Lend selected ({holdSel.size})
                   </Button>

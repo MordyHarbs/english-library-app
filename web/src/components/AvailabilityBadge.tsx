@@ -27,7 +27,9 @@ export function AvailabilityBadge({
       />
       {available
         ? 'Available'
-        : availability?.expected_return
+        : availability?.is_reserved
+          ? 'Reserved'
+          : availability?.expected_return
           ? `Out · back ${availability.expected_return}`
           : 'Checked out'}
     </span>

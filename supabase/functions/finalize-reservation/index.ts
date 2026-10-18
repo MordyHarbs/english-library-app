@@ -23,11 +23,14 @@ Deno.serve(async (req) => {
       return resp instanceof Response ? resp : json({ error: 'Forbidden' }, 403)
     }
 
-    const { reservation_id, decisions, message } = (await req.json()) as {
+    const { reservation_id, decisions, message, date_given } = (await req.json()) as {
       reservation_id: string
       decisions: Decision[]
       message?: string
+      date_given?: string // YYYY-MM-DD for "lend" decisions; defaults to today
     }
+    if (date_given && !/^\d{4}-\d{2}-\d{2}$/.test(date_given))
+      return json({ error: 'date_given must be YYYY-MM-DD' }, 400)
     if (!reservation_id || !Array.isArray(decisions) || decisions.length === 0)
       return json({ error: 'reservation_id and decisions are required' }, 400)
 
@@ -51,7 +54,8 @@ Deno.serve(async (req) => {
       .select('value')
       .eq('key', 'loan_duration_days')
       .maybeSingle()
-    const dueDate = fmt(addDays(jerusalemToday(), Number(durRow?.value ?? 14)))
+    const given = date_given || fmt(jerusalemToday())
+    const dueDate = fmt(addDays(new Date(given + 'T00:00:00Z'), Number(durRow?.value ?? 14)))
     const failed: { item_id: string; reason: string }[] = []
 
     // Apply each decision (only if still pending — the status guard enforces too).
@@ -77,6 +81,7 @@ Deno.serve(async (req) => {
           book_id: bookOf.get(d.item_id),
           member_id: res.member_id,
           reservation_item_id: d.item_id,
+          date_given: given,
           due_date: dueDate,
         })
         if (error) failed.push({ item_id: d.item_id, reason: error.message })

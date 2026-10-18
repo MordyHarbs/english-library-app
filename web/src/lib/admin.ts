@@ -93,6 +93,7 @@ export interface DetailItem {
   description: string | null
   pages: number | null
   isAvailable: boolean
+  isReserved: boolean
   expectedReturn: string | null
 }
 export interface ReservationDetail {
@@ -128,7 +129,7 @@ export function useReservationDetail(id: string | undefined) {
       const bookIds = (data.reservation_items ?? []).map((i) => i.book_id)
       const { data: avail } = await supabase
         .from('book_availability')
-        .select('book_id, is_available, expected_return')
+        .select('book_id, is_available, expected_return, is_reserved')
         .in('book_id', bookIds)
       const availMap = new Map((avail ?? []).map((a) => [a.book_id, a]))
 
@@ -164,6 +165,7 @@ export function useReservationDetail(id: string | undefined) {
             pages: b?.pages ?? null,
             isAvailable: a?.is_available ?? true,
             expectedReturn: a?.expected_return ?? null,
+            isReserved: a?.is_reserved ?? false,
           }
         }),
       }

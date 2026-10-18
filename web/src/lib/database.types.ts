@@ -433,6 +433,7 @@ export type Database = {
           book_id: string | null
           expected_return: string | null
           is_available: boolean | null
+          is_reserved: boolean | null
         }
         Relationships: []
       }

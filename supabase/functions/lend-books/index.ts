@@ -22,17 +22,22 @@ Deno.serve(async (req) => {
       return resp instanceof Response ? resp : json({ error: 'Forbidden' }, 403)
     }
 
-    const { member_id, items, due_date } = (await req.json()) as {
+    const { member_id, items, due_date, date_given } = (await req.json()) as {
       member_id: string
       items: LendItem[]
       due_date?: string
+      date_given?: string // YYYY-MM-DD; defaults to today, may be in the future
     }
+    if (date_given && !/^\d{4}-\d{2}-\d{2}$/.test(date_given))
+      return json({ error: 'date_given must be YYYY-MM-DD' }, 400)
     if (!member_id || !Array.isArray(items) || items.length === 0)
       return json({ error: 'member_id and items are required' }, 400)
 
     const db = serviceClient()
 
-    // Resolve the due date.
+    const given = date_given || fmt(jerusalemToday())
+
+    // Resolve the due date (loan length counted from the lend date).
     let due = due_date
     if (!due) {
       const { data: s } = await db
@@ -40,10 +45,9 @@ Deno.serve(async (req) => {
         .select('value')
         .eq('key', 'loan_duration_days')
         .maybeSingle()
-      due = fmt(addDays(jerusalemToday(), Number(s?.value ?? 14)))
+      due = fmt(addDays(new Date(given + 'T00:00:00Z'), Number(s?.value ?? 14)))
     }
 
-    const given = fmt(jerusalemToday())
     const loanIds: string[] = []
     const failed: { book_id: string; reason: string }[] = []
 

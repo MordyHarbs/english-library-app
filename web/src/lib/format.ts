@@ -19,3 +19,6 @@ export function isOverdue(dueDate: string, returned: string | null): boolean {
     return false
   }
 }
+
+/** Today's local date as yyyy-MM-dd. */
+export const todayStr = () => format(new Date(), 'yyyy-MM-dd')

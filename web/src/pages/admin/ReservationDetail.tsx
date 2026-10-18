@@ -9,9 +9,10 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { useReservationDetail, type DetailItem, type ItemStatus } from '@/lib/admin'
 import { callFunction } from '@/lib/functions'
 import { supabase } from '@/lib/supabase'
-import { fmtDate } from '@/lib/format'
+import { fmtDate, todayStr } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { LendDateField } from '@/components/LendDateField'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -52,6 +53,7 @@ export default function ReservationDetail() {
 
   const [decisions, setDecisions] = useState<Record<string, Decision>>({})
   const [message, setMessage] = useState('')
+  const [lendDate, setLendDate] = useState(todayStr())
   const [busy, setBusy] = useState(false)
   const [detailBook, setDetailBook] = useState<DetailItem | null>(null)
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null)
@@ -98,6 +100,7 @@ export default function ReservationDetail() {
         reservation_id: r!.id,
         decisions: changes,
         message: message.trim(),
+        date_given: lendDate,
       })
       const failed = res.failed ?? []
       if (failed.length > 0) {
@@ -216,7 +219,9 @@ export default function ReservationDetail() {
                     <span className="text-xs font-medium text-success">● Available</span>
                   ) : (
                     <span className="text-xs font-medium text-warning">
-                      ● Out{it.expectedReturn ? ` · back ${it.expectedReturn}` : ''}
+                      {it.isReserved
+                        ? '● Reserved (approved)'
+                        : `● Out${it.expectedReturn ? ` · back ${it.expectedReturn}` : ''}`}
                     </span>
                   )}
                   <button
@@ -297,6 +302,11 @@ export default function ReservationDetail() {
               placeholder="Included in the confirmation email…"
               className="mt-2 w-full rounded-md border bg-background p-2 text-sm"
             />
+            {Object.values(decisions).includes('lend') && (
+              <div className="mt-3">
+                <LendDateField value={lendDate} onChange={setLendDate} />
+              </div>
+            )}
             <Button className="mt-3 w-full" disabled={busy} onClick={finalize}>
               {busy ? 'Finalizing…' : 'Finalize reservation'}
             </Button>
