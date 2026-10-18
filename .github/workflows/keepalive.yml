@@ -1,5 +1,5 @@
 name: keepalive
-# Pings the database twice a week so the Supabase free project never auto-pauses.
+# Pings each library's database twice a week so the Supabase free projects never auto-pause.
 on:
   schedule:
     - cron: '0 6 * * 1,4' # Mon & Thu 06:00 UTC
@@ -21,5 +21,15 @@ jobs:
           code=$(curl -sS -o /dev/null -w "%{http_code}" \
             "$SUPABASE_URL/rest/v1/books?select=id&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY")
+          echo "HTTP $code"
+          test "$code" = "200"
+      # Kiryat Sefer Kids Library (second deployment). URL + publishable key are public
+      # (they ship in that site's JS), so they live here rather than in secrets.
+      - name: Ping REST (KS Kids library)
+        run: |
+          key=sb_publishable_CJvOne1GytWE9WAS7IFvJA_WQj_NFJI
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "https://scednacuotsimujvztwy.supabase.co/rest/v1/books?select=id&limit=1" \
+            -H "apikey: $key")
           echo "HTTP $code"
           test "$code" = "200"
