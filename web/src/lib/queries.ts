@@ -145,7 +145,7 @@ export function useAvailability() {
     queryFn: async (): Promise<Record<string, Availability>> => {
       const { data, error } = await supabase
         .from('book_availability')
-        .select('book_id, is_available, expected_return, is_reserved')
+        .select('*')
       if (error) throw error
       const map: Record<string, Availability> = {}
       for (const row of data ?? []) {

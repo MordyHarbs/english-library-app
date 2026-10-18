@@ -129,7 +129,7 @@ export function useReservationDetail(id: string | undefined) {
       const bookIds = (data.reservation_items ?? []).map((i) => i.book_id)
       const { data: avail } = await supabase
         .from('book_availability')
-        .select('book_id, is_available, expected_return, is_reserved')
+        .select('*')
         .in('book_id', bookIds)
       const availMap = new Map((avail ?? []).map((a) => [a.book_id, a]))
 
