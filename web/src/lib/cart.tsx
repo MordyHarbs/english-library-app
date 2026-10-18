@@ -30,14 +30,21 @@ const STORAGE_KEY = 'ayalot.cart'
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      return Array.isArray(parsed) ? parsed : []
     } catch {
       return []
     }
   })
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    // Storage can be blocked or full (private mode, in-app browsers); the cart
+    // must keep working in memory rather than crash the whole app.
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      /* ignore */
+    }
   }, [items])
 
   const has = useCallback((id: string) => items.some((i) => i.id === id), [items])

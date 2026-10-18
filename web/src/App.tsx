@@ -53,7 +53,11 @@ function readDismissedNoticeTokens() {
 }
 
 function writeDismissedNoticeTokens(tokens: Record<string, string>) {
-  window.localStorage.setItem(DISMISSED_APP_NOTICES_KEY, JSON.stringify(tokens))
+  try {
+    window.localStorage.setItem(DISMISSED_APP_NOTICES_KEY, JSON.stringify(tokens))
+  } catch {
+    /* storage unavailable; the notice just shows again next visit */
+  }
 }
 
 function noticeDismissalToken(notice: { dismissal_version: number; title: string; body: string }) {

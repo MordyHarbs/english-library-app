@@ -8,6 +8,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/lib/auth'
 import { CartProvider } from '@/lib/cart'
 import App from './App.tsx'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -26,7 +27,9 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
             <Toaster richColors position="top-center" />
           </CartProvider>
         </AuthProvider>
