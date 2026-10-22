@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Bell, BookOpen, Clock, Database, Image, Mail, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bell, BookOpen, Clock, CreditCard, Database, Image, Mail, Pencil, Plus, Trash2 } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { useAppNotices, useSettings, type AppNotice } from '@/lib/manage'
 import { supabase } from '@/lib/supabase'
@@ -32,6 +32,9 @@ const META: Record<string, { label: string; help?: string }> = {
   email_member_on_return: { label: 'On books returned' },
   email_due_soon: { label: 'Due-soon reminders' },
   email_overdue: { label: 'Overdue reminders' },
+  membership_tracking: { label: 'Require membership dues', help: 'Track member payments and show when each membership expires.' },
+  membership_period_months: { label: 'Membership length (months)', help: 'How long one payment is valid. Suggested end date when recording a payment; you can override it per member.' },
+  membership_fee: { label: 'Membership fee (₪)', help: 'Default amount suggested when recording a payment.' },
   email_welcome_on_create: { label: 'Welcome email for new members' },
 }
 
@@ -53,6 +56,8 @@ const BRANDING_KEYS = [
   'contact_phone',
   'backup_folder_name',
 ]
+
+const MEMBERSHIP_KEYS = ['membership_tracking', 'membership_period_months', 'membership_fee']
 
 const SCHEDULE_KEYS = ['daily_tasks_time']
 
@@ -126,10 +131,13 @@ export default function Settings() {
   const nextNoticeSort = Math.max(0, ...noticeRows.map((notice) => notice.sort_order)) + 10
   const lendingRows = rows.filter((setting) => LENDING_KEYS.includes(setting.key))
   const brandingRows = rows.filter((setting) => BRANDING_KEYS.includes(setting.key))
+  const membershipRows = rows.filter((setting) => MEMBERSHIP_KEYS.includes(setting.key))
   const scheduleRows = rows.filter((setting) => SCHEDULE_KEYS.includes(setting.key))
   const emailRows = rows.filter(
     (setting) =>
-      typeof setting.value === 'boolean' && !OBSOLETE_NOTICE_SETTING_KEYS.includes(setting.key),
+      typeof setting.value === 'boolean' &&
+      !MEMBERSHIP_KEYS.includes(setting.key) &&
+      !OBSOLETE_NOTICE_SETTING_KEYS.includes(setting.key),
   )
   const noticeSchemaMissing = noticesError
     ? /schema cache|app_notices/i.test((noticesError as Error).message)
@@ -464,6 +472,43 @@ export default function Settings() {
               })}
             </div>
           </section>
+
+          {membershipRows.length > 0 && (
+            <section className="overflow-hidden rounded-xl border bg-card">
+              <header className="flex items-center gap-2 border-b bg-secondary/40 px-5 py-3">
+                <CreditCard className="size-4 text-accent" />
+                <h2 className="font-medium">Membership dues</h2>
+              </header>
+              <div className="divide-y">
+                {membershipRows.map((setting) => {
+                  const meta = META[setting.key] ?? { label: setting.key }
+                  const isBool = typeof setting.value === 'boolean'
+                  return (
+                    <div key={setting.key} className="flex items-center justify-between gap-4 px-5 py-3.5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{meta.label}</p>
+                        {meta.help && <p className="text-xs text-muted-foreground">{meta.help}</p>}
+                      </div>
+                      {isBool ? (
+                        <Toggle
+                          on={!!(draft[setting.key] ?? setting.value)}
+                          onChange={(value) => setDraft({ ...draft, [setting.key]: value })}
+                        />
+                      ) : (
+                        <Input
+                          type="number"
+                          min={0}
+                          value={String(draft[setting.key] ?? setting.value ?? '')}
+                          onChange={(e) => setDraft({ ...draft, [setting.key]: Number(e.target.value) })}
+                          className="w-24 text-right"
+                        />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
 
           <section className="overflow-hidden rounded-xl border bg-card">
             <header className="flex items-center gap-2 border-b bg-secondary/40 px-5 py-3">

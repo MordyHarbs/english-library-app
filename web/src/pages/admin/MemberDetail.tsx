@@ -11,6 +11,9 @@ import { useSettings } from '@/lib/manage'
 import { useBooks } from '@/lib/queries'
 import { fmtDate, isOverdue, todayStr } from '@/lib/format'
 import { DEFAULT_EXTEND_DAYS, defaultExtendDays, dueDateAfterDays } from '@/lib/settings'
+import { MembershipSection } from '@/components/MembershipSection'
+import { MembershipBadge } from '@/components/MembershipBadge'
+import { membershipStatus, membershipTracking, useMembershipOverview } from '@/lib/membership'
 import { LendDateField } from '@/components/LendDateField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -103,7 +106,10 @@ export default function MemberDetail() {
   const [extendLoan, setExtendLoan] = useState<MemberLoan | null>(null)
   const [newDue, setNewDue] = useState(dueDateAfterDays(undefined, DEFAULT_EXTEND_DAYS))
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [commentDraft, setCommentDraft] = useState<string | null>(null)
   const extendDays = defaultExtendDays(settings)
+  const tracking = membershipTracking(settings)
+  const { data: overview } = useMembershipOverview(tracking)
 
   const bookMatches = useMemo(() => {
     const q = bookSearch.trim().toLowerCase()
@@ -193,6 +199,7 @@ export default function MemberDetail() {
           phone: draft.phone?.trim() || null,
           address: draft.address?.trim() || null,
           paid: !!draft.paid,
+          member_since: draft.member_since || null,
           is_admin: !!draft.is_admin,
           comments: draft.comments?.trim() || null,
           fees_owed: Number(draft.fees_owed ?? 0),
@@ -202,6 +209,25 @@ export default function MemberDetail() {
       if (error) throw error
       toast.success('Member updated.')
       setDraft(null)
+      qc.invalidateQueries({ queryKey: ['admin'] })
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveComment() {
+    if (!data?.member || commentDraft === null) return
+    setBusy(true)
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({ comments: commentDraft.trim() || null })
+        .eq('id', data.member.id)
+      if (error) throw error
+      toast.success('Comment saved.')
+      setCommentDraft(null)
       qc.invalidateQueries({ queryKey: ['admin'] })
     } catch (e) {
       toast.error((e as Error).message)
@@ -267,15 +293,54 @@ export default function MemberDetail() {
           <Field label="Email" value={m.email} className="sm:col-span-2" />
           <Field label="Phone" value={m.phone} className="sm:col-span-2" />
           <Field label="Address" value={m.address} />
-          <Field label="Membership" value={m.paid ? 'Paid' : 'Not paid'} />
+          {tracking ? (
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Membership</p>
+              <div className="mt-0.5">
+                <MembershipBadge status={membershipStatus(overview?.payments.get(m.id), todayStr(), overview?.freezes.get(m.id))} />
+              </div>
+            </div>
+          ) : (
+            <Field label="Membership" value={m.paid ? 'Paid' : 'Not paid'} />
+          )}
           <Field label="Password login" value={m.has_password ? 'Enabled' : 'OTP only'} />
           <Field label="Fees owed" value={fees > 0 ? `₪${fees.toFixed(2)}` : 'None'} />
-          <Field label="Member since" value={fmtDate(m.date_added)} />
-          {m.comments && (
-            <div className="col-span-full">
-              <Field label="Comments" value={m.comments} />
+          <Field label="Member since" value={fmtDate(m.member_since ?? m.date_added)} />
+          <div className="col-span-full min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Comments</p>
+              {commentDraft === null && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setCommentDraft(m.comments ?? '')}
+                >
+                  <Pencil className="size-3" /> {m.comments ? 'Edit' : 'Add'}
+                </button>
+              )}
             </div>
-          )}
+            {commentDraft === null ? (
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{m.comments || '—'}</p>
+            ) : (
+              <div className="mt-1 space-y-2">
+                <textarea
+                  autoFocus
+                  rows={4}
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => setCommentDraft(null)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" disabled={busy} onClick={saveComment}>
+                    {busy ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
           <Button variant="outline" className="col-span-full" disabled={busy} onClick={() => setDraft(m)}>
             <Pencil className="size-4" /> Edit member
           </Button>
@@ -285,6 +350,8 @@ export default function MemberDetail() {
         </div>
 
         <div className="space-y-6">
+          {tracking && <MembershipSection memberId={m.id} settings={settings} />}
+
           {/* Lend a book */}
           <section className="rounded-lg border bg-card p-4">
             <h2 className="mb-2 text-sm font-semibold">Lend a book to {m.name}</h2>
@@ -455,6 +522,13 @@ export default function MemberDetail() {
                   />
                 </EditField>
               </div>
+              <EditField label="Member since">
+                <Input
+                  type="date"
+                  value={draft.member_since ?? draft.date_added?.slice(0, 10) ?? ''}
+                  onChange={(e) => setDraft({ ...draft, member_since: e.target.value })}
+                />
+              </EditField>
               <EditField label="Address">
                 <Input value={draft.address ?? ''} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
               </EditField>
@@ -462,15 +536,17 @@ export default function MemberDetail() {
                 <Input value={draft.comments ?? ''} onChange={(e) => setDraft({ ...draft, comments: e.target.value })} />
               </EditField>
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={!!draft.paid}
-                    onChange={(e) => setDraft({ ...draft, paid: e.target.checked })}
-                  />
-                  Membership paid
-                </label>
+                {!tracking && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={!!draft.paid}
+                      onChange={(e) => setDraft({ ...draft, paid: e.target.checked })}
+                    />
+                    Membership paid
+                  </label>
+                )}
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"

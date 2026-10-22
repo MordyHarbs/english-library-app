@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AccountShell } from '@/components/AccountShell'
 import { useAuth } from '@/lib/auth'
 import { callFunction } from '@/lib/functions'
 import { supabase } from '@/lib/supabase'
+import { fmtDate, todayStr } from '@/lib/format'
+import { membershipStatus, type MembershipFreeze, type MembershipPayment } from '@/lib/membership'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,6 +30,32 @@ export default function MyDetails() {
   const [pw, setPw] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
   const fees = Number(member?.fees_owed ?? 0)
+  // Only present once the library has recorded dues payments; falls back to the paid flag.
+  const { data: dues } = useQuery({
+    enabled: !!member?.id,
+    queryKey: ['myMembershipPayments', member?.id],
+    queryFn: async (): Promise<{ payments: MembershipPayment[]; freezes: MembershipFreeze[] }> => {
+      const [pay, frz] = await Promise.all([
+        supabase.from('membership_payments').select('*').eq('member_id', member!.id),
+        supabase.from('membership_freezes').select('*').eq('member_id', member!.id),
+      ])
+      return { payments: pay.data ?? [], freezes: frz.data ?? [] }
+    },
+  })
+  const payments = dues?.payments
+  const membership = membershipStatus(payments, todayStr(), dues?.freezes)
+  const membershipText =
+    membership.state === 'frozen'
+      ? 'Frozen — no payment needed'
+      : payments && payments.length > 0 && membership.payment
+      ? membership.state === 'expired'
+        ? `Expired ${fmtDate(membership.payment.period_end)}`
+        : membership.state === 'none'
+          ? 'Not paid'
+          : `Valid until ${fmtDate(membership.payment.period_end)}`
+      : member?.paid
+        ? 'Paid'
+        : 'Not paid'
 
   async function sendChange() {
     if (!message.trim()) return toast.error('Describe the change you need')
@@ -67,7 +96,7 @@ export default function MyDetails() {
           <Field label="Email" value={member?.email} />
           <Field label="Phone" value={member?.phone} />
           <Field label="Address" value={member?.address} />
-          <Field label="Membership" value={member?.paid ? 'Paid' : 'Not paid'} />
+          <Field label="Membership" value={membershipText} />
           <Field label="Fees owed" value={fees > 0 ? `₪${fees.toFixed(2)}` : 'None'} />
         </div>
 

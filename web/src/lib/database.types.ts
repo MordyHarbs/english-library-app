@@ -247,6 +247,85 @@ export type Database = {
           },
         ]
       }
+      membership_freezes: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          member_id: string
+          reason: string | null
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          member_id: string
+          reason?: string | null
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          member_id?: string
+          reason?: string | null
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_freezes_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_payments: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          member_id: string
+          method: string | null
+          note: string | null
+          paid_on: string
+          period_end: string
+          period_start: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          member_id: string
+          method?: string | null
+          note?: string | null
+          paid_on?: string
+          period_end: string
+          period_start: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          member_id?: string
+          method?: string | null
+          note?: string | null
+          paid_on?: string
+          period_end?: string
+          period_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           address: string | null
@@ -258,6 +337,7 @@ export type Database = {
           has_password: boolean
           id: string
           is_admin: boolean
+          member_since: string | null
           name: string
           paid: boolean
           phone: string | null
@@ -272,6 +352,7 @@ export type Database = {
           has_password?: boolean
           id?: string
           is_admin?: boolean
+          member_since?: string | null
           name: string
           paid?: boolean
           phone?: string | null
@@ -286,6 +367,7 @@ export type Database = {
           has_password?: boolean
           id?: string
           is_admin?: boolean
+          member_since?: string | null
           name?: string
           paid?: boolean
           phone?: string | null

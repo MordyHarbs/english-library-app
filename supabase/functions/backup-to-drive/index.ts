@@ -18,6 +18,8 @@ const DATA_TABLES = [
   'reservations',
   'reservation_items',
   'loans',
+  'membership_payments',
+  'membership_freezes',
   'settings',
   'email_log',
   'app_notices',

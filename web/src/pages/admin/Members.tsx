@@ -4,7 +4,10 @@ import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
-import { useMembers, type Member } from '@/lib/manage'
+import { useMembers, useSettings, type Member } from '@/lib/manage'
+import { membershipStatus, membershipTracking, useMembershipOverview } from '@/lib/membership'
+import { MembershipBadge } from '@/components/MembershipBadge'
+import { todayStr } from '@/lib/format'
 import { callFunction } from '@/lib/functions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +25,9 @@ type Draft = Partial<Member> & { id?: string }
 export default function Members() {
   const { data: members, isLoading } = useMembers()
   const qc = useQueryClient()
+  const { data: settings } = useSettings()
+  const tracking = membershipTracking(settings)
+  const { data: overview } = useMembershipOverview(tracking)
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -101,7 +107,9 @@ export default function Members() {
                   {m.phone ? ` · ${m.phone}` : ''}
                 </p>
               </button>
-              {!m.paid && (
+              {tracking ? (
+                <MembershipBadge status={membershipStatus(overview?.payments.get(m.id), todayStr(), overview?.freezes.get(m.id))} />
+              ) : !m.paid && (
                 <span className="rounded bg-warning/15 px-1.5 py-0.5 text-xs font-medium text-warning">
                   unpaid
                 </span>
@@ -157,15 +165,17 @@ export default function Members() {
                 <Input value={draft.comments ?? ''} onChange={(e) => setDraft({ ...draft, comments: e.target.value })} />
               </Field>
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={!!draft.paid}
-                    onChange={(e) => setDraft({ ...draft, paid: e.target.checked })}
-                  />
-                  Membership paid
-                </label>
+                {!tracking && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={!!draft.paid}
+                      onChange={(e) => setDraft({ ...draft, paid: e.target.checked })}
+                    />
+                    Membership paid
+                  </label>
+                )}
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
