@@ -116,6 +116,7 @@ export default function MemberDetail() {
     if (!q) return []
     return (allBooks ?? [])
       .filter((b) => `${b.title} ${b.author ?? ''}`.toLowerCase().includes(q))
+      .filter((b) => !b.is_unavailable)
       .filter((b) => !toLend.some((t) => t.id === b.id))
       .slice(0, 6)
   }, [allBooks, bookSearch, toLend])

@@ -55,34 +55,36 @@ export function BookCard({
           )}
         </div>
 
-        <AvailabilityBadge availability={availability} />
+        <AvailabilityBadge availability={availability} bookId={book.id} title={book.title} />
 
-        <button
-          onClick={() =>
-            toggle({
-              id: book.id,
-              title: book.title,
-              author: book.author,
-              cover_path: book.cover_path,
-            })
-          }
-          className={cn(
-            'mt-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors',
-            inCart
-              ? 'bg-primary text-primary-foreground'
-              : 'border border-input bg-transparent text-foreground hover:bg-secondary',
-          )}
-        >
-          {inCart ? (
-            <>
-              <X className="size-4" /> Remove
-            </>
-          ) : (
-            <>
-              <Plus className="size-4" /> Add
-            </>
-          )}
-        </button>
+        {!availability?.is_unavailable && (
+          <button
+            onClick={() =>
+              toggle({
+                id: book.id,
+                title: book.title,
+                author: book.author,
+                cover_path: book.cover_path,
+              })
+            }
+            className={cn(
+              'mt-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors',
+              inCart
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-input bg-transparent text-foreground hover:bg-secondary',
+            )}
+          >
+            {inCart ? (
+              <>
+                <X className="size-4" /> Remove
+              </>
+            ) : (
+              <>
+                <Plus className="size-4" /> Add
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   )

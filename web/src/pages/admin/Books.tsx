@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import imageCompression from 'browser-image-compression'
-import { Plus, Pencil, BookOpen, Trash2, Link, ImageOff } from 'lucide-react'
+import { Plus, Pencil, BookOpen, Trash2, Link, ImageOff, Ban, RotateCcw } from 'lucide-react'
 import { AdminShell } from '@/components/AdminShell'
 import { BookDialog } from '@/components/BookDialog'
 import { useBooks, useCategories, type CatalogBook } from '@/lib/queries'
@@ -194,6 +194,14 @@ export default function Books() {
     }
   }
 
+  async function setUnavailable(id: string, title: string, value: boolean) {
+    const { error } = await supabase.from('books').update({ is_unavailable: value }).eq('id', id)
+    if (error) return toast.error(error.message)
+    toast.success(value ? `${title} marked unavailable.` : `${title} is available again.`)
+    qc.invalidateQueries({ queryKey: ['books'] })
+    qc.invalidateQueries({ queryKey: ['availability'] })
+  }
+
   async function save() {
     if (!draft?.title?.trim()) return toast.error('Title is required')
     if (!draft.serial_number || Number(draft.serial_number) < 1) {
@@ -210,6 +218,7 @@ export default function Books() {
         pages: draft.pages ? Number(draft.pages) : null,
         serial_number: Number(draft.serial_number),
         comments: draft.comments || null,
+        is_unavailable: !!draft.is_unavailable,
         ...(coverRemoved && !coverFile ? { cover_path: null } : {}),
       }
       let bookId = draft.id
@@ -293,6 +302,11 @@ export default function Books() {
                     </p>
                   </div>
                 </button>
+                {b.is_unavailable && (
+                  <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                    Unavailable
+                  </span>
+                )}
                 {(() => {
                   const loan = loanByBook.get(b.id)
                   return loan ? (
@@ -304,12 +318,22 @@ export default function Books() {
                     >
                       Out
                     </button>
-                  ) : (
+                  ) : b.is_unavailable ? null : (
                     <span className="shrink-0 rounded-full bg-success/12 px-2.5 py-0.5 text-xs font-medium text-success">
                       Available
                     </span>
                   )
                 })()}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={b.is_unavailable ? 'Mark available' : 'Mark unavailable'}
+                  title={b.is_unavailable ? 'Mark available again' : 'Mark unavailable'}
+                  className="text-muted-foreground"
+                  onClick={() => setUnavailable(b.id, b.title, !b.is_unavailable)}
+                >
+                  {b.is_unavailable ? <RotateCcw className="size-4" /> : <Ban className="size-4" />}
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -442,6 +466,15 @@ export default function Books() {
               <Field label="Admin notes">
                 <Input value={draft.comments ?? ''} onChange={(e) => setDraft({ ...draft, comments: e.target.value })} />
               </Field>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={!!draft.is_unavailable}
+                  onChange={(e) => setDraft({ ...draft, is_unavailable: e.target.checked })}
+                />
+                Unavailable (lost, damaged, withdrawn…) — can't be requested or lent
+              </label>
               <Field label="Cover image">
                 <div className="flex flex-col gap-3 rounded-lg border bg-secondary/20 p-3 sm:flex-row sm:items-center">
                   <div className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">

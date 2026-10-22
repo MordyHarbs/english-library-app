@@ -16,12 +16,14 @@ export interface CatalogBook {
   categoryName: string | null
   comments: string | null
   date_added: string
+  is_unavailable: boolean
 }
 
 export interface Availability {
   is_available: boolean
   expected_return: string | null
   is_reserved?: boolean
+  is_unavailable?: boolean
 }
 
 export interface PublicSettings {
@@ -85,7 +87,7 @@ export function useBooks() {
       const { data, error } = await supabase
         .from('books')
         .select(
-          'id, title, author, description, pages, serial_number, cover_path, category_id, comments, date_added, categories(name)',
+          'id, title, author, description, pages, serial_number, cover_path, category_id, comments, date_added, is_unavailable, categories(name)',
         )
         .order('title', { ascending: true })
       if (error) throw error
@@ -101,6 +103,7 @@ export function useBooks() {
         categoryName: (b.categories as { name: string } | null)?.name ?? null,
         comments: b.comments,
         date_added: b.date_added,
+        is_unavailable: b.is_unavailable ?? false,
       }))
     },
   })
@@ -114,7 +117,7 @@ export function useBook(id: string | undefined) {
       const { data, error } = await supabase
         .from('books')
         .select(
-          'id, title, author, description, pages, serial_number, cover_path, category_id, comments, date_added, categories(name)',
+          'id, title, author, description, pages, serial_number, cover_path, category_id, comments, date_added, is_unavailable, categories(name)',
         )
         .eq('id', id!)
         .maybeSingle()
@@ -132,6 +135,7 @@ export function useBook(id: string | undefined) {
         categoryName: (data.categories as { name: string } | null)?.name ?? null,
         comments: data.comments,
         date_added: data.date_added,
+        is_unavailable: data.is_unavailable ?? false,
       }
     },
   })
@@ -154,6 +158,7 @@ export function useAvailability() {
             is_available: row.is_available ?? true,
             expected_return: row.expected_return,
             is_reserved: row.is_reserved ?? false,
+            is_unavailable: row.is_unavailable ?? false,
           }
         }
       }

@@ -81,6 +81,7 @@ export type Database = {
           date_added: string
           description: string | null
           id: string
+          is_unavailable: boolean
           pages: number | null
           serial_number: number
           title: string
@@ -93,6 +94,7 @@ export type Database = {
           date_added?: string
           description?: string | null
           id?: string
+          is_unavailable?: boolean
           pages?: number | null
           serial_number?: number
           title: string
@@ -105,6 +107,7 @@ export type Database = {
           date_added?: string
           description?: string | null
           id?: string
+          is_unavailable?: boolean
           pages?: number | null
           serial_number?: number
           title?: string
@@ -516,6 +519,7 @@ export type Database = {
           expected_return: string | null
           is_available: boolean | null
           is_reserved: boolean | null
+          is_unavailable: boolean | null
         }
         Relationships: []
       }

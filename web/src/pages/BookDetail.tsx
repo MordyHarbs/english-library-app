@@ -67,7 +67,7 @@ export default function BookDetail() {
           )}
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <AvailabilityBadge availability={availability?.[book.id]} />
+            <AvailabilityBadge availability={availability?.[book.id]} bookId={book.id} title={book.title} />
             {book.categoryName && (
               <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
                 {book.categoryName}
@@ -84,29 +84,31 @@ export default function BookDetail() {
             </p>
           )}
 
-          <Button
-            size="lg"
-            variant={inCart ? 'secondary' : 'default'}
-            className="mt-6"
-            onClick={() =>
-              toggle({
-                id: book.id,
-                title: book.title,
-                author: book.author,
-                cover_path: book.cover_path,
-              })
-            }
-          >
-            {inCart ? (
-              <>
-                <Check className="size-4" /> Added to request
-              </>
-            ) : (
-              <>
-                <Plus className="size-4" /> Add to request
-              </>
-            )}
-          </Button>
+          {!availability?.[book.id]?.is_unavailable && (
+            <Button
+              size="lg"
+              variant={inCart ? 'secondary' : 'default'}
+              className="mt-6"
+              onClick={() =>
+                toggle({
+                  id: book.id,
+                  title: book.title,
+                  author: book.author,
+                  cover_path: book.cover_path,
+                })
+              }
+            >
+              {inCart ? (
+                <>
+                  <Check className="size-4" /> Added to request
+                </>
+              ) : (
+                <>
+                  <Plus className="size-4" /> Add to request
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </AppShell>

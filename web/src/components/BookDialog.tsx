@@ -45,7 +45,7 @@ export function BookDialog({
               <h2 className="font-display text-xl font-medium leading-tight">{book.title}</h2>
               {book.author && <p className="text-muted-foreground">{book.author}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <AvailabilityBadge availability={availability?.[book.id]} />
+                <AvailabilityBadge availability={availability?.[book.id]} bookId={book.id} title={book.title} />
                 {book.categoryName && (
                   <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
                     {book.categoryName}
@@ -60,7 +60,7 @@ export function BookDialog({
                   {book.description}
                 </p>
               )}
-              {allowAdd && (
+              {allowAdd && !availability?.[book.id]?.is_unavailable && (
                 <Button
                   className="mt-4"
                   variant={inCart ? 'secondary' : 'default'}
